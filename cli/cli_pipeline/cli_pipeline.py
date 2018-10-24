@@ -1,14 +1,14 @@
 # -*- coding: utf-8 -*-
 
-__version__ = "1.5.218"
+__version__ = "1.5.219"
 
 import base64 as _base64
 import glob as _glob
 import json as _json
 import logging as _logging
 import os as _os
-from os import environ as _environ
 import re as _re
+from os import environ as _environ
 import subprocess as _subprocess
 import sys as _sys
 import tarfile as _tarfile
@@ -17,6 +17,8 @@ import warnings as _warnings
 from datetime import datetime as _datetime
 from inspect import getmembers as _getmembers, isfunction as _isfunction
 from pprint import pprint as _pprint
+import tempfile as _tempfile
+from distutils import dir_util as _dir_util
 
 import boto3 as _boto3
 from botocore.exceptions import ClientError as _ClientError
@@ -362,6 +364,111 @@ _PIPELINE_RESOURCE_TYPE_CONFIG_DICT = {
 #          // 8 characters for user_id
 #          // 8 characters for run_id - not available yet
 #          // 3 characters for chip
+
+
+# TODO: this should be restricted to just Git repos and not S3 and stuff like that
+_GIT_URI_REGEX = _re.compile(r"^[^/]*:")
+
+
+def _parse_subdirectory(uri):
+    # Parses a uri and returns the uri and subdirectory as separate values.
+    # Uses '#' as a delimiter.
+    subdirectory = ''
+    parsed_uri = uri
+    if '#' in uri:
+        subdirectory = uri[uri.find('#')+1:]
+        parsed_uri = uri[:uri.find('#')]
+    if subdirectory and '.' in subdirectory:
+        raise ExecutionException("'.' is not allowed in project subdirectory paths.")
+    return parsed_uri, subdirectory
+
+
+def _is_valid_branch_name(work_dir, version):
+    """
+    Returns True if the ``version`` is the name of a branch in a Git project.
+    ``work_dir`` must be the working directory in a git repo.
+    """
+    if version is not None:
+        from git import Repo
+        from git.exc import GitCommandError
+        repo = Repo(work_dir, search_parent_directories=True)
+        try:
+            return repo.git.rev_parse("--verify", "refs/heads/%s" % version) is not ''
+        except GitCommandError:
+            return False
+    return False
+
+
+def _expand_uri(uri):
+    if _is_local_uri(uri):
+        return os.path.abspath(uri)
+    return uri
+
+
+def _is_local_uri(uri):
+    """Returns True if the passed-in URI should be interpreted as a path on the local filesystem."""
+    return not _GIT_URI_REGEX.match(uri)
+
+
+def _fetch_project(uri, force_tempdir, version=None, git_username=None, git_password=None):
+    """
+    Fetch a project into a local directory, returning the path to the local project directory.
+    :param force_tempdir: If True, will fetch the project into a temporary directory. Otherwise,
+                          will fetch Git projects into a temporary directory but simply return the
+                          path of local projects (i.e. perform a no-op for local projects).
+    """
+    parsed_uri, subdirectory = _parse_subdirectory(uri)
+    use_temp_dst_dir = force_tempdir or not _is_local_uri(parsed_uri)
+    dst_dir = _tempfile.mkdtemp() if use_temp_dst_dir else parsed_uri
+    if use_temp_dst_dir:
+        print("=== Fetching project from %s into %s ===" % (uri, dst_dir))
+    if _is_local_uri(uri):
+        if version is not None:
+            raise ExecutionException("Setting a version is only supported for Git project URIs")
+        if use_temp_dst_dir:
+            _dir_util.copy_tree(src=parsed_uri, dst=dst_dir)
+    else:
+        assert _GIT_URI_REGEX.match(parsed_uri), "Non-local URI %s should be a Git URI" % parsed_uri
+        _fetch_git_repo(parsed_uri, version, dst_dir, git_username, git_password)
+    res = _os.path.abspath(os.path.join(dst_dir, subdirectory))
+    if not _os.path.exists(res):
+        raise ExecutionException("Could not find subdirectory %s of %s" % (subdirectory, dst_dir))
+    return res
+
+
+def _fetch_git_repo(uri, version, dst_dir, git_username, git_password):
+    """
+    Clone the git repo at ``uri`` into ``dst_dir``, checking out commit ``version`` (or defaulting
+    to the head commit of the repository's master branch if version is unspecified).
+    If ``git_username`` and ``git_password`` are specified, uses them to authenticate while fetching
+    the repo. Otherwise, assumes authentication parameters are specified by the environment,
+    e.g. by a Git credential helper.
+    """
+    # We defer importing git until the last moment, because the import requires that the git
+    # executable is availble on the PATH, so we only want to fail if we actually need it.
+    import git
+    repo = git.Repo.init(dst_dir)
+    origin = repo.create_remote("origin", uri)
+    git_args = [git_username, git_password]
+    if not (all(arg is not None for arg in git_args) or all(arg is None for arg in git_args)):
+        raise ExecutionException("Either both or neither of git_username and git_password must be "
+                                 "specified.")
+    if git_username:
+        git_credentials = "url=%s\nusername=%s\npassword=%s" % (uri, git_username, git_password)
+        repo.git.config("--local", "credential.helper", "cache")
+        process.exec_cmd(cmd=["git", "credential-cache", "store"], cwd=dst_dir,
+                         cmd_stdin=git_credentials)
+    origin.fetch()
+    if version is not None:
+        try:
+            repo.git.checkout(version)
+        except git.exc.GitCommandError as e:
+            raise ExecutionException("Unable to checkout version '%s' of git repo %s"
+                                     "- please ensure that the version exists in the repo. "
+                                     "Error: %s" % (version, uri, e))
+    else:
+        repo.create_head("master", origin.refs.master)
+        repo.heads.master.checkout()
 
 
 def _dict_print(n, d):
@@ -2188,6 +2295,18 @@ def predict_server_build(model_name,
 
     if _is_base64_encoded(model_path):
         model_path = _decode_base64(model_path)
+
+
+#    work_dir = _fetch_project(uri=uri, force_tempdir=False, version=version,
+#                              git_username=git_username, git_password=git_password)
+
+    if not _is_local_uri(model_path):
+        # TODO:  add these args in the cli 
+        version = None
+        git_username = None
+        git_password = None
+        model_path = _fetch_project(uri=model_path, force_tempdir=False, version=version,
+                                    git_username=git_username, git_password=git_password)
 
     model_path = _os.path.expandvars(model_path)
     model_path = _os.path.expanduser(model_path)
@@ -5117,9 +5236,9 @@ def _cluster_kube_delete(tag,
                          chip=_default_model_chip):
     cmd = """
 # Secrets 
-kubectl delete -f /root/product/yaml/secrets/cloud-pipeline-ai-secret.yaml
-kubectl delete -f /root/product/yaml/secrets/tls-secret.yaml
-kubectl delete -f /root/product/yaml/secrets/notebook-oauth-secret.yaml
+kubectl delete -f /root/certa/yaml/api/cloud-pipeline-ai-secret.yaml
+kubectl delete -f /root/certs/yaml/notebook-oauth/notebook-oauth-secret.yaml
+kubectl delete -f /root/certs/yaml/tls-certificate/tls-certificate-secret.yaml
 
 # Istio
 export ISTIO_VERSION=0.7.1
@@ -5133,19 +5252,19 @@ kubectl delete -f /root/product/yaml/jaeger/jaeger-configmap.yaml
 kubectl delete -f /root/product/yaml/jaeger/jaeger.yaml
 
 # ElasticSearch (logging)
-kubectl delete -f /root/product/yaml/logging/logging-elasticsearch-deploy.yaml
-kubectl delete -f /root/product/yaml/logging/logging-elasticsearch-svc.yaml
+#kubectl delete -f /root/product/yaml/logging/logging-elasticsearch-deploy.yaml
+#kubectl delete -f /root/product/yaml/logging/logging-elasticsearch-svc.yaml
 
 # Fluentd (logging)
-kubectl delete -f /root/product/yaml/logging/logging-fluentd-daemonset.yaml
+#kubectl delete -f /root/product/yaml/logging/logging-fluentd-daemonset.yaml
 
 # Kibana (logging)
-kubectl delete -f /root/product/yaml/logging/logging-kibana-deploy.yaml
-kubectl delete -f /root/product/yaml/logging/logging-kibana-svc.yaml
+#kubectl delete -f /root/product/yaml/logging/logging-kibana-deploy.yaml
+#kubectl delete -f /root/product/yaml/logging/logging-kibana-svc.yaml
 
 # Kubernetes Dashboard
-export KUBERNETES_DASHBOARD_VERSION=1.8.3
-kubectl delete -f /root/product/yaml/dashboard/kubernetes-dashboard-$KUBERNETES_DASHBOARD_VERSION.yaml
+#export KUBERNETES_DASHBOARD_VERSION=1.8.3
+#kubectl delete -f /root/product/yaml/dashboard/kubernetes-dashboard-$KUBERNETES_DASHBOARD_VERSION.yaml
 
 # Hystrix
 kubectl delete -f /root/product/yaml/dashboard/hystrix-deploy.yaml
@@ -5176,7 +5295,7 @@ kubectl delete -f /root/product/yaml/api/api-deploy.yaml
 kubectl delete -f /root/product/yaml/api/api-svc.yaml
 
 # Heapster
-kubectl delete -f /root/product/yaml/dashboard/heapster-1.7.0.yaml
+#kubectl delete -f /root/product/yaml/dashboard/heapster-1.7.0.yaml
 
 # MySql
 #kubectl delete -f /root/product/yaml/mysql/mysql-master-deploy.yaml
@@ -5203,22 +5322,22 @@ kubectl delete -f /root/product/yaml/dashboard/heapster-1.7.0.yaml
 #kubectl delete -f /root/product/yaml/spark/2.3.0/spark-2.3.0-worker-svc.yaml
 
 # PipelineDB (DB)
-kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-db-deploy.yaml
-kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-db-svc.yaml
+#kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-db-deploy.yaml
+#kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-db-svc.yaml
 
 # PipelineDB Backend
-kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-backend-deploy.yaml
-kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-backend-svc.yaml
+#kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-backend-deploy.yaml
+#kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-backend-svc.yaml
 
-kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-frontend-deploy.yaml
-kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-frontend-svc.yaml
+#kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-frontend-deploy.yaml
+#kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-frontend-svc.yaml
 
 kubectl delete -f /root/product/yaml/notebook/notebook-community-%s-deploy.yaml
 kubectl delete -f /root/product/yaml/notebook/notebook-%s-svc.yaml
 
-helm del --purge kafka
+#helm del --purge kafka
 
-kubectl delete -f /root/product/yaml/kafka/kafka-rest-svc.yaml
+#kubectl delete -f /root/product/yaml/kafka/kafka-rest-svc.yaml
 """ % (chip, chip)
 
     print(cmd)
@@ -5230,9 +5349,9 @@ def _cluster_kube_create(tag,
                          chip=_default_model_chip):
     cmd = """
 # Secrets 
-kubectl create -f /root/product/yaml/secrets/cloud-pipeline-ai-secret.yaml
-kubectl create -f /root/product/yaml/secrets/tls-secret.yaml
-kubectl create -f /root/product/yaml/secrets/notebook-oauth-secret.yaml
+kubectl create -f /root/certa/yaml/api/api-secret.yaml
+kubectl create -f /root/certs/yaml/notebook-oauth/notebook-oauth-secret.yaml
+kubectl create -f /root/certs/yaml/tls-certificate/tls-certificate-secret.yaml
 
 # Istio
 export ISTIO_VERSION=0.7.1
@@ -5246,19 +5365,19 @@ kubectl create -f /root/product/yaml/jaeger/jaeger-configmap.yaml
 kubectl create -f /root/product/yaml/jaeger/jaeger.yaml
 
 # ElasticSearch (logging)
-kubectl create -f /root/product/yaml/logging/logging-elasticsearch-deploy.yaml
-kubectl create -f /root/product/yaml/logging/logging-elasticsearch-svc.yaml
+#kubectl create -f /root/product/yaml/logging/logging-elasticsearch-deploy.yaml
+#kubectl create -f /root/product/yaml/logging/logging-elasticsearch-svc.yaml
 
 # Fluentd (logging)
-kubectl create -f /root/product/yaml/logging/logging-fluentd-daemonset.yaml
+#kubectl create -f /root/product/yaml/logging/logging-fluentd-daemonset.yaml
 
 # Kibana (logging)
-kubectl create -f /root/product/yaml/logging/logging-kibana-deploy.yaml
-kubectl create -f /root/product/yaml/logging/logging-kibana-svc.yaml
+#kubectl create -f /root/product/yaml/logging/logging-kibana-deploy.yaml
+#kubectl create -f /root/product/yaml/logging/logging-kibana-svc.yaml
 
 # Kubernetes Dashboard 
-export KUBERNETES_DASHBOARD_VERSION=1.8.3
-kubectl create -f /root/product/yaml/dashboard/kubernetes-dashboard-$KUBERNETES_DASHBOARD_VERSION.yaml
+#export KUBERNETES_DASHBOARD_VERSION=1.8.3
+#kubectl create -f /root/product/yaml/dashboard/kubernetes-dashboard-$KUBERNETES_DASHBOARD_VERSION.yaml
 
 # Hystrix
 kubectl create -f /root/product/yaml/dashboard/hystrix-deploy.yaml
@@ -5318,42 +5437,42 @@ kubectl create -f /root/product/yaml/dashboard/heapster-1.7.0.yaml
 #kubectl create -f /root/product/yaml/spark/2.3.0/spark-2.3.0-worker-svc.yaml
 
 # PipelineDB (DB)
-kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-db-deploy.yaml
-kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-db-svc.yaml
+#kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-db-deploy.yaml
+#kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-db-svc.yaml
 
 # PipelineDB Backend
-kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-backend-deploy.yaml
-kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-backend-svc.yaml
+#kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-backend-deploy.yaml
+#kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-backend-svc.yaml
 
-kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-frontend-deploy.yaml
-kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-frontend-svc.yaml
+#kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-frontend-deploy.yaml
+#kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-frontend-svc.yaml
 
 kubectl create -f /root/product/yaml/notebook/notebook-community-%s-deploy.yaml
 kubectl create -f /root/product/yaml/notebook/notebook-%s-svc.yaml
 
-export HELM_VERSION=2.9.1
-echo "export HELM_VERSION=$HELM_VERSION" >> /root/.bashrc
-echo "export HELM_VERSION=$HELM_VERSION" >> /etc/environment
+#export HELM_VERSION=2.10.0
+#echo "export HELM_VERSION=$HELM_VERSION" >> /root/.bashrc
+#echo "export HELM_VERSION=$HELM_VERSION" >> /etc/environment
 
-cd /root
-wget https://storage.googleapis.com/kubernetes-helm/helm-v$HELM_VERSION-linux-amd64.tar.gz
-tar -xvzf helm-$HELM_VERSION-linux-amd64.tar.gz
-chmod a+x linux-amd64/helm
-mv linux-amd64/helm /usr/local/bin/helm
-rm -rf linux-amd64
-rm helm-v$HELM_VERSION-linux-amd64.tar.gz
+#cd /root
+#wget https://storage.googleapis.com/kubernetes-helm/helm-v$HELM_VERSION-linux-amd64.tar.gz
+#tar -xvzf helm-$HELM_VERSION-linux-amd64.tar.gz
+#chmod a+x linux-amd64/helm
+#mv linux-amd64/helm /usr/local/bin/helm
+#rm -rf linux-amd64
+#rm helm-v$HELM_VERSION-linux-amd64.tar.gz
 
-helm init --upgrade --tiller-namespace default
-kubectl create serviceaccount --namespace default tiller
-kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
-kubectl patch deploy --namespace default tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
-helm init --service-account tiller --upgrade --tiller-namespace default
+#helm init --upgrade --tiller-namespace default
+#kubectl create serviceaccount --namespace default tiller
+#kubectl create clusterrolebinding tiller-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:tiller
+#kubectl patch deploy --namespace default tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
+#helm init --service-account tiller --upgrade --tiller-namespace default
 
-cd /root
-helm install --name kafka --set cp-zookeeper.enabled=true,cp-zookeeper.persistence.enabled=false,cp-kafka.enabled=true,cp-kafka.persistence.enabled=false,cp-schema-registry.enabled=false,cp-kafka-rest.enabled=true,cp-kafka-connect.enabled=false,cp-ksql-server.enabled=false /root/product/yaml/kafka/cp-helm-charts
+#cd /root
+#helm install --name kafka --set cp-zookeeper.enabled=true,cp-zookeeper.persistence.enabled=false,cp-kafka.enabled=true,cp-kafka.persistence.enabled=false,cp-schema-registry.enabled=false,cp-kafka-rest.enabled=true,cp-kafka-connect.enabled=false,cp-ksql-server.enabled=false /root/product/yaml/kafka/cp-helm-charts
 
-kubectl delete svc cp-kafka-rest
-kubectl create -f /root/product/yaml/kafka/kafka-rest-svc.yaml
+#kubectl delete svc cp-kafka-rest
+#kubectl create -f /root/product/yaml/kafka/kafka-rest-svc.yaml
 """ % (chip, chip)
 
     print(cmd)
