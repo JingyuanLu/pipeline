@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-__version__ = "1.5.219"
+__version__ = "1.5.222"
 
 import base64 as _base64
 import glob as _glob
@@ -214,18 +214,18 @@ _pipelineai_ecr_cpu_image_list = [
     'grafana',
     'admin',
     'api',
-    'mysql-master',
-    'redis-master',
-    'metastore-2.1.1',
-    'hdfs-namenode',
-    'spark-2.3.0-base',
-    'spark-2.3.0-master',
-    'spark-2.3.0-worker',
-    'spark-2.3.0-kube',
-    'mongo-3.4.13',
-    'pipelinedb-backend',
-    'node-9.8.0',
-    'pipelinedb-frontend',
+#    'mysql-master',
+#    'redis-master',
+#    'metastore-2.1.1',
+#    'hdfs-namenode',
+#    'spark-2.3.0-base',
+#    'spark-2.3.0-master',
+#    'spark-2.3.0-worker',
+#    'spark-2.3.0-kube',
+#    'mongo-3.4.13',
+#    'pipelinedb-backend',
+#    'node-9.8.0',
+#    'pipelinedb-frontend',
     'logging-elasticsearch-6.3.0',
     'logging-kibana-oss-6.3.0',
     'logging-fluentd-kubernetes-v1.2.2-debian-elasticsearch'
@@ -251,15 +251,15 @@ _istio_image_list = [
     'docker.io/istio/servicegraph:0.7.1'
 ]
 
-_vizier_image_list = [
-    'docker.io/mysql:8.0.3',
-    'docker.io/katib/vizier-core:v0.1.2-alpha',
-    'docker.io/katib/earlystopping-medianstopping:v0.1.2-alpha',
-    'docker.io/katib/suggestion-bayesianoptimization:v0.1.2-alpha',
-    'docker.io/katib/suggestion-grid:v0.1.2-alpha',
-    'docker.io/katib/suggestion-hyperband:v0.1.1-alpha',
-    'docker.io/katib/suggestion-random:v0.1.2-alpha',
-]
+#_vizier_image_list = [
+#    'docker.io/mysql:8.0.3',
+#    'docker.io/katib/vizier-core:v0.1.2-alpha',
+#    'docker.io/katib/earlystopping-medianstopping:v0.1.2-alpha',
+#    'docker.io/katib/suggestion-bayesianoptimization:v0.1.2-alpha',
+#    'docker.io/katib/suggestion-grid:v0.1.2-alpha',
+#    'docker.io/katib/suggestion-hyperband:v0.1.1-alpha',
+#    'docker.io/katib/suggestion-random:v0.1.2-alpha',
+#]
 
 _other_image_list = [
     'docker.io/prom/statsd-exporter:v0.5.0',
@@ -267,7 +267,7 @@ _other_image_list = [
     'gcr.io/google_containers/heapster:v1.4.0',
     'gcr.io/google_containers/addon-resizer:2.0',
     'docker.io/jaegertracing/all-in-one:1.6.0',
-    'docker.io/mitdbg/modeldb-frontend:latest',
+#    'docker.io/mitdbg/modeldb-frontend:latest',
 ]
 
 _PIPELINE_API_BASE_PATH = '/admin/api/c/v1'
@@ -1726,7 +1726,7 @@ def _env_registry_fullsync(tag,
                       image_registry_repo)
 
     _sync_registry(_istio_image_list)
-    _sync_registry(_vizier_image_list)
+#    _sync_registry(_vizier_image_list)
     _sync_registry(_other_image_list)
 
     _sync_registry(_pipelineai_ecr_cpu_image_list,
@@ -2124,7 +2124,7 @@ def _create_predict_server_Dockerfile(model_name,
     model_predict_cpu_Dockerfile_templates_path = _os.path.normpath(_os.path.join(pipeline_templates_path, _dockerfile_template_registry['predict'][0][0]))
     path, filename = _os.path.split(model_predict_cpu_Dockerfile_templates_path)
     rendered = _jinja2.Environment(loader=_jinja2.FileSystemLoader(path)).get_template(filename).render(context)
-    # Reminder to me that we can write this file anywhere (/root/pipelineai/models, /root/pipelineai/models/.../model
+    # Reminder to me that we can write this file anywhere (pipelineai/models, pipelineai/models/.../model
     #   since we're always passing the model_path when we build the docker image with this Dockerfile
     rendered_Dockerfile = _os.path.normpath('.pipeline-generated-%s-%s-%s-%s-%s-%s-Dockerfile' % (image_registry_namespace, model_name, model_tag, model_type, model_runtime, model_chip))
     with open(rendered_Dockerfile, 'wt') as fh:
@@ -4557,7 +4557,7 @@ def train_server_start(model_name,
     # Note:  The %s:<paths> below must match the paths in templates/docker/train-server-local-dockerfile.template
     # Any changes to these paths must be sync'd with train-server-local-dockerfile.template, train-cluster.yaml.template, and train-cluster-gpu.yaml.template
     # Also, /opt/ml/model is already burned into the Docker image at this point, so we can't specify it from the outside.  (This is by design.)
-    cmd = '%s run -itd -p 2222:2222 -p 6006:6006 -e PIPELINE_SINGLE_SERVER_ONLY=%s -e PIPELINE_STREAM_LOGGER_URL=%s -e PIPELINE_STREAM_LOGGER_TOPIC=%s -e PIPELINE_STREAM_INPUT_URL=%s -e PIPELINE_STREAM_INPUT_TOPIC=%s -e PIPELINE_STREAM_OUTPUT_URL=%s -e PIPELINE_STREAM_OUTPUT_TOPIC=%s -e TF_CONFIG=%s -e PIPELINE_TRAIN_ARGS="%s" -v %s:/opt/ml/input/ -v %s:/opt/ml/output/ -v %s:/root/pipelineai/training_runs/ --name=%s %s %s %s/%s/%s-%s:%s train' % (start_cmd, single_server_only, stream_logger_url, stream_logger_topic, stream_input_url, stream_input_topic, stream_output_url, stream_output_topic, tf_config_local_run, train_args, input_host_path, output_host_path, training_runs_host_path, container_name, memory_limit, start_cmd_extra_args, image_registry_url, image_registry_repo, image_registry_namespace, model_name, model_tag)
+    cmd = '%s run -itd -p 2222:2222 -p 6006:6006 -e PIPELINE_SINGLE_SERVER_ONLY=%s -e PIPELINE_STREAM_LOGGER_URL=%s -e PIPELINE_STREAM_LOGGER_TOPIC=%s -e PIPELINE_STREAM_INPUT_URL=%s -e PIPELINE_STREAM_INPUT_TOPIC=%s -e PIPELINE_STREAM_OUTPUT_URL=%s -e PIPELINE_STREAM_OUTPUT_TOPIC=%s -e TF_CONFIG=%s -e PIPELINE_TRAIN_ARGS="%s" -v %s:/opt/ml/input/ -v %s:/opt/ml/output/ -v %s:~/pipelineai/training_runs/ --name=%s %s %s %s/%s/%s-%s:%s train' % (start_cmd, single_server_only, stream_logger_url, stream_logger_topic, stream_input_url, stream_input_topic, stream_output_url, stream_output_topic, tf_config_local_run, train_args, input_host_path, output_host_path, training_runs_host_path, container_name, memory_limit, start_cmd_extra_args, image_registry_url, image_registry_repo, image_registry_namespace, model_name, model_tag)
     print("")
     print(cmd)
     print("")
@@ -5236,108 +5236,108 @@ def _cluster_kube_delete(tag,
                          chip=_default_model_chip):
     cmd = """
 # Secrets 
-kubectl delete -f /root/certa/yaml/api/cloud-pipeline-ai-secret.yaml
-kubectl delete -f /root/certs/yaml/notebook-oauth/notebook-oauth-secret.yaml
-kubectl delete -f /root/certs/yaml/tls-certificate/tls-certificate-secret.yaml
+kubectl delete -f ~/certs/yaml/api/cloud-pipeline-ai-secret.yaml
+kubectl delete -f ~/certs/yaml/notebook-oauth/notebook-oauth-secret.yaml
+kubectl delete -f ~/certs/yaml/tls-certificate/tls-certificate-secret.yaml
 
 # Istio
 export ISTIO_VERSION=0.7.1
-kubectl delete -f /root/product/yaml/istio/istio-$ISTIO_VERSION.yaml
+kubectl delete -f ~/product/yaml/istio/istio-$ISTIO_VERSION.yaml
 
 # Hostpaths
-kubectl delete -f /root/product/yaml/path/path-configmap.yaml
+kubectl delete -f ~/product/yaml/path/path-configmap.yaml
 
 # Jaeger
-kubectl delete -f /root/product/yaml/jaeger/jaeger-configmap.yaml
-kubectl delete -f /root/product/yaml/jaeger/jaeger.yaml
+kubectl delete -f ~/product/yaml/jaeger/jaeger-configmap.yaml
+kubectl delete -f ~/product/yaml/jaeger/jaeger.yaml
 
 # ElasticSearch (logging)
-#kubectl delete -f /root/product/yaml/logging/logging-elasticsearch-deploy.yaml
-#kubectl delete -f /root/product/yaml/logging/logging-elasticsearch-svc.yaml
+#kubectl delete -f ~/product/yaml/logging/logging-elasticsearch-deploy.yaml
+#kubectl delete -f ~/product/yaml/logging/logging-elasticsearch-svc.yaml
 
 # Fluentd (logging)
-#kubectl delete -f /root/product/yaml/logging/logging-fluentd-daemonset.yaml
+#kubectl delete -f ~/product/yaml/logging/logging-fluentd-daemonset.yaml
 
 # Kibana (logging)
-#kubectl delete -f /root/product/yaml/logging/logging-kibana-deploy.yaml
-#kubectl delete -f /root/product/yaml/logging/logging-kibana-svc.yaml
+#kubectl delete -f ~/product/yaml/logging/logging-kibana-deploy.yaml
+#kubectl delete -f ~/product/yaml/logging/logging-kibana-svc.yaml
 
 # Kubernetes Dashboard
 #export KUBERNETES_DASHBOARD_VERSION=1.8.3
-#kubectl delete -f /root/product/yaml/dashboard/kubernetes-dashboard-$KUBERNETES_DASHBOARD_VERSION.yaml
+#kubectl delete -f ~/product/yaml/dashboard/kubernetes-dashboard-$KUBERNETES_DASHBOARD_VERSION.yaml
 
 # Hystrix
-kubectl delete -f /root/product/yaml/dashboard/hystrix-deploy.yaml
-kubectl delete -f /root/product/yaml/dashboard/hystrix-svc.yaml
+kubectl delete -f ~/product/yaml/dashboard/hystrix-deploy.yaml
+kubectl delete -f ~/product/yaml/dashboard/hystrix-svc.yaml
 
 # Turbine
 kubectl delete clusterrolebinding serviceaccounts-view 
-kubectl delete -f /root/product/yaml/dashboard/turbine-deploy.yaml
-kubectl delete -f /root/product/yaml/dashboard/turbine-svc.yaml
+kubectl delete -f ~/product/yaml/dashboard/turbine-deploy.yaml
+kubectl delete -f ~/product/yaml/dashboard/turbine-svc.yaml
 
 # Prometheus
-kubectl delete -f /root/product/yaml/prometheus/prometheus.yaml
+kubectl delete -f ~/product/yaml/prometheus/prometheus.yaml
 
 # Grafana
-kubectl delete -f /root/product/yaml/grafana/grafana-serviceaccount.yaml
-kubectl delete -f /root/product/yaml/grafana/grafana-deploy.yaml
-kubectl delete -f /root/product/yaml/grafana/grafana-svc.yaml
+kubectl delete -f ~/product/yaml/grafana/grafana-serviceaccount.yaml
+kubectl delete -f ~/product/yaml/grafana/grafana-deploy.yaml
+kubectl delete -f ~/product/yaml/grafana/grafana-svc.yaml
 
 # Admin
-kubectl delete -f /root/product/yaml/admin/admin-configmap.yaml
-kubectl delete -f /root/product/yaml/admin/admin-community-deploy.yaml
-kubectl delete -f /root/product/yaml/admin/admin-svc.yaml
+kubectl delete -f ~/product/yaml/admin/admin-configmap.yaml
+kubectl delete -f ~/product/yaml/admin/admin-deploy.yaml
+kubectl delete -f ~/product/yaml/admin/admin-svc.yaml
 
 # Api
-kubectl delete -f /root/product/yaml/api/api-configmap.yaml
-kubectl delete -f /root/product/yaml/api/api-secret.yaml
-kubectl delete -f /root/product/yaml/api/api-deploy.yaml
-kubectl delete -f /root/product/yaml/api/api-svc.yaml
+kubectl delete -f ~/product/yaml/api/api-configmap.yaml
+kubectl delete -f ~/product/yaml/api/api-secret.yaml
+kubectl delete -f ~/product/yaml/api/api-deploy.yaml
+kubectl delete -f ~/product/yaml/api/api-svc.yaml
 
 # Heapster
-#kubectl delete -f /root/product/yaml/dashboard/heapster-1.7.0.yaml
+#kubectl delete -f ~/product/yaml/dashboard/heapster-1.7.0.yaml
 
 # MySql
-#kubectl delete -f /root/product/yaml/mysql/mysql-master-deploy.yaml
-#kubectl delete -f /root/product/yaml/mysql/mysql-master-svc.yaml
+#kubectl delete -f ~/product/yaml/mysql/mysql-master-deploy.yaml
+#kubectl delete -f ~/product/yaml/mysql/mysql-master-svc.yaml
 
 # Redis
-#kubectl delete -f /root/product/yaml/redis/redis-master-deploy.yaml
-#kubectl delete -f /root/product/yaml/redis/redis-master-svc.yaml
+#kubectl delete -f ~/product/yaml/redis/redis-master-deploy.yaml
+#kubectl delete -f ~/product/yaml/redis/redis-master-svc.yaml
 
 # Hive Metastore
-#kubectl delete -f /root/product/yaml/metastore/metastore-deploy.yaml
-#kubectl delete -f /root/product/yaml/metastore/metastore-svc.yaml
+#kubectl delete -f ~/product/yaml/metastore/metastore-deploy.yaml
+#kubectl delete -f ~/product/yaml/metastore/metastore-svc.yaml
 
 # HDFS
-#kubectl delete -f /root/product/yaml/hdfs/namenode-deploy.yaml
-#kubectl delete -f /root/product/yaml/hdfs/namenode-svc.yaml
+#kubectl delete -f ~/product/yaml/hdfs/namenode-deploy.yaml
+#kubectl delete -f ~/product/yaml/hdfs/namenode-svc.yaml
 
 # Spark Master
-#kubectl delete -f /root/product/yaml/spark/2.3.0/spark-2.3.0-master-deploy.yaml
-#kubectl delete -f /root/product/yaml/spark/2.3.0/spark-2.3.0-master-svc.yaml
+#kubectl delete -f ~/product/yaml/spark/2.3.0/spark-2.3.0-master-deploy.yaml
+#kubectl delete -f ~/product/yaml/spark/2.3.0/spark-2.3.0-master-svc.yaml
 
 # Spark Worker
-#kubectl delete -f /root/product/yaml/spark/2.3.0/spark-2.3.0-worker-deploy.yaml
-#kubectl delete -f /root/product/yaml/spark/2.3.0/spark-2.3.0-worker-svc.yaml
+#kubectl delete -f ~/product/yaml/spark/2.3.0/spark-2.3.0-worker-deploy.yaml
+#kubectl delete -f ~/product/yaml/spark/2.3.0/spark-2.3.0-worker-svc.yaml
 
 # PipelineDB (DB)
-#kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-db-deploy.yaml
-#kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-db-svc.yaml
+#kubectl delete -f ~/product/yaml/pipelinedb/pipelinedb-db-deploy.yaml
+#kubectl delete -f ~/product/yaml/pipelinedb/pipelinedb-db-svc.yaml
 
 # PipelineDB Backend
-#kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-backend-deploy.yaml
-#kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-backend-svc.yaml
+#kubectl delete -f ~/product/yaml/pipelinedb/pipelinedb-backend-deploy.yaml
+#kubectl delete -f ~/product/yaml/pipelinedb/pipelinedb-backend-svc.yaml
 
-#kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-frontend-deploy.yaml
-#kubectl delete -f /root/product/yaml/pipelinedb/pipelinedb-frontend-svc.yaml
+#kubectl delete -f ~/product/yaml/pipelinedb/pipelinedb-frontend-deploy.yaml
+#kubectl delete -f ~/product/yaml/pipelinedb/pipelinedb-frontend-svc.yaml
 
-kubectl delete -f /root/product/yaml/notebook/notebook-community-%s-deploy.yaml
-kubectl delete -f /root/product/yaml/notebook/notebook-%s-svc.yaml
+kubectl delete -f ~/product/yaml/notebook/notebook-community-%s-deploy.yaml
+kubectl delete -f ~/product/yaml/notebook/notebook-%s-svc.yaml
 
 #helm del --purge kafka
 
-#kubectl delete -f /root/product/yaml/kafka/kafka-rest-svc.yaml
+#kubectl delete -f ~/product/yaml/kafka/kafka-rest-svc.yaml
 """ % (chip, chip)
 
     print(cmd)
@@ -5349,112 +5349,112 @@ def _cluster_kube_create(tag,
                          chip=_default_model_chip):
     cmd = """
 # Secrets 
-kubectl create -f /root/certa/yaml/api/api-secret.yaml
-kubectl create -f /root/certs/yaml/notebook-oauth/notebook-oauth-secret.yaml
-kubectl create -f /root/certs/yaml/tls-certificate/tls-certificate-secret.yaml
+kubectl create -f ~/certs/yaml/api/api-secret.yaml
+kubectl create -f ~/certs/yaml/notebook-oauth/notebook-oauth-secret.yaml
+kubectl create -f ~/certs/yaml/tls-certificate/tls-certificate-secret.yaml
 
 # Istio
 export ISTIO_VERSION=0.7.1
-kubectl create -f /root/product/yaml/istio/istio-$ISTIO_VERSION.yaml
+kubectl create -f ~/product/yaml/istio/istio-$ISTIO_VERSION.yaml
 
 # Hostpaths
-kubectl create -f /root/product/yaml/path/path-configmap.yaml
+kubectl create -f ~/product/yaml/path/path-configmap.yaml
 
 # Jaeger
-kubectl create -f /root/product/yaml/jaeger/jaeger-configmap.yaml
-kubectl create -f /root/product/yaml/jaeger/jaeger.yaml
+kubectl create -f ~/product/yaml/jaeger/jaeger-configmap.yaml
+kubectl create -f ~/product/yaml/jaeger/jaeger.yaml
 
 # ElasticSearch (logging)
-#kubectl create -f /root/product/yaml/logging/logging-elasticsearch-deploy.yaml
-#kubectl create -f /root/product/yaml/logging/logging-elasticsearch-svc.yaml
+#kubectl create -f ~/product/yaml/logging/logging-elasticsearch-deploy.yaml
+#kubectl create -f ~/product/yaml/logging/logging-elasticsearch-svc.yaml
 
 # Fluentd (logging)
-#kubectl create -f /root/product/yaml/logging/logging-fluentd-daemonset.yaml
+#kubectl create -f ~/product/yaml/logging/logging-fluentd-daemonset.yaml
 
 # Kibana (logging)
-#kubectl create -f /root/product/yaml/logging/logging-kibana-deploy.yaml
-#kubectl create -f /root/product/yaml/logging/logging-kibana-svc.yaml
+#kubectl create -f ~/product/yaml/logging/logging-kibana-deploy.yaml
+#kubectl create -f ~/product/yaml/logging/logging-kibana-svc.yaml
 
 # Kubernetes Dashboard 
 #export KUBERNETES_DASHBOARD_VERSION=1.8.3
-#kubectl create -f /root/product/yaml/dashboard/kubernetes-dashboard-$KUBERNETES_DASHBOARD_VERSION.yaml
+#kubectl create -f ~/product/yaml/dashboard/kubernetes-dashboard-$KUBERNETES_DASHBOARD_VERSION.yaml
 
 # Hystrix
-kubectl create -f /root/product/yaml/dashboard/hystrix-deploy.yaml
-kubectl create -f /root/product/yaml/dashboard/hystrix-svc.yaml
+kubectl create -f ~/product/yaml/dashboard/hystrix-deploy.yaml
+kubectl create -f ~/product/yaml/dashboard/hystrix-svc.yaml
 
 # Turbine
 kubectl create clusterrolebinding serviceaccounts-view \
   --clusterrole=view \
   --group=system:serviceaccounts
-kubectl create -f /root/product/yaml/dashboard/turbine-deploy.yaml
-kubectl create -f /root/product/yaml/dashboard/turbine-svc.yaml
+kubectl create -f ~/product/yaml/dashboard/turbine-deploy.yaml
+kubectl create -f ~/product/yaml/dashboard/turbine-svc.yaml
 
 # Prometheus
-kubectl create -f /root/product/yaml/prometheus/prometheus.yaml
+kubectl create -f ~/product/yaml/prometheus/prometheus.yaml
 
 # Grafana
-kubectl create -f /root/product/yaml/grafana/grafana-serviceaccount.yaml
-kubectl create -f /root/product/yaml/grafana/grafana-deploy.yaml
-kubectl create -f /root/product/yaml/grafana/grafana-svc.yaml
+kubectl create -f ~/product/yaml/grafana/grafana-serviceaccount.yaml
+kubectl create -f ~/product/yaml/grafana/grafana-deploy.yaml
+kubectl create -f ~/product/yaml/grafana/grafana-svc.yaml
 
 # Admin
-kubectl create -f /root/product/yaml/admin/admin-configmap.yaml
-kubectl create -f /root/product/yaml/admin/admin-community-deploy.yaml
-kubectl create -f /root/product/yaml/admin/admin-svc.yaml
+kubectl create -f ~/product/yaml/admin/admin-configmap.yaml
+kubectl create -f ~/product/yaml/admin/admin-deploy.yaml
+kubectl create -f ~/product/yaml/admin/admin-svc.yaml
 
 # Api
-kubectl create -f /root/product/yaml/api/api-configmap.yaml
-kubectl create -f /root/product/yaml/api/api-secret.yaml
-kubectl create -f /root/product/yaml/api/api-deploy.yaml
-kubectl create -f /root/product/yaml/api/api-svc.yaml
+kubectl create -f ~/product/yaml/api/api-configmap.yaml
+kubectl create -f ~/product/yaml/api/api-secret.yaml
+kubectl create -f ~/product/yaml/api/api-deploy.yaml
+kubectl create -f ~/product/yaml/api/api-svc.yaml
 
 # Heapster
-kubectl create -f /root/product/yaml/dashboard/heapster-1.7.0.yaml
+#kubectl create -f ~/product/yaml/dashboard/heapster-1.7.0.yaml
 
 # MySql
-#kubectl create -f /root/product/yaml/mysql/mysql-master-deploy.yaml
-#kubectl create -f /root/product/yaml/mysql/mysql-master-svc.yaml
+#kubectl create -f ~/product/yaml/mysql/mysql-master-deploy.yaml
+#kubectl create -f ~/product/yaml/mysql/mysql-master-svc.yaml
 
 # Redis
-#kubectl create -f /root/product/yaml/redis/redis-master-deploy.yaml
-#kubectl create -f /root/product/yaml/redis/redis-master-svc.yaml
+#kubectl create -f ~/product/yaml/redis/redis-master-deploy.yaml
+#kubectl create -f ~/product/yaml/redis/redis-master-svc.yaml
 
 # Hive Metastore
-#kubectl create -f /root/product/yaml/metastore/metastore-deploy.yaml
-#kubectl create -f /root/product/yaml/metastore/metastore-svc.yaml
+#kubectl create -f ~/product/yaml/metastore/metastore-deploy.yaml
+#kubectl create -f ~/product/yaml/metastore/metastore-svc.yaml
 
 # HDFS
-#kubectl create -f /root/product/yaml/hdfs/namenode-deploy.yaml
-#kubectl create -f /root/product/yaml/hdfs/namenode-svc.yaml
+#kubectl create -f ~/product/yaml/hdfs/namenode-deploy.yaml
+#kubectl create -f ~/product/yaml/hdfs/namenode-svc.yaml
 
 # Spark Master
-#kubectl create -f /root/product/yaml/spark/2.3.0/spark-2.3.0-master-deploy.yaml
-#kubectl create -f /root/product/yaml/spark/2.3.0/spark-2.3.0-master-svc.yaml
+#kubectl create -f ~/product/yaml/spark/2.3.0/spark-2.3.0-master-deploy.yaml
+#kubectl create -f ~/product/yaml/spark/2.3.0/spark-2.3.0-master-svc.yaml
 
 # Spark Worker
-#kubectl create -f /root/product/yaml/spark/2.3.0/spark-2.3.0-worker-deploy.yaml
-#kubectl create -f /root/product/yaml/spark/2.3.0/spark-2.3.0-worker-svc.yaml
+#kubectl create -f ~/product/yaml/spark/2.3.0/spark-2.3.0-worker-deploy.yaml
+#kubectl create -f ~/product/yaml/spark/2.3.0/spark-2.3.0-worker-svc.yaml
 
 # PipelineDB (DB)
-#kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-db-deploy.yaml
-#kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-db-svc.yaml
+#kubectl create -f ~/product/yaml/pipelinedb/pipelinedb-db-deploy.yaml
+#kubectl create -f ~/product/yaml/pipelinedb/pipelinedb-db-svc.yaml
 
 # PipelineDB Backend
-#kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-backend-deploy.yaml
-#kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-backend-svc.yaml
+#kubectl create -f ~/product/yaml/pipelinedb/pipelinedb-backend-deploy.yaml
+#kubectl create -f ~/product/yaml/pipelinedb/pipelinedb-backend-svc.yaml
 
-#kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-frontend-deploy.yaml
-#kubectl create -f /root/product/yaml/pipelinedb/pipelinedb-frontend-svc.yaml
+#kubectl create -f ~/product/yaml/pipelinedb/pipelinedb-frontend-deploy.yaml
+#kubectl create -f ~/product/yaml/pipelinedb/pipelinedb-frontend-svc.yaml
 
-kubectl create -f /root/product/yaml/notebook/notebook-community-%s-deploy.yaml
-kubectl create -f /root/product/yaml/notebook/notebook-%s-svc.yaml
+kubectl create -f ~/product/yaml/notebook/notebook-community-%s-deploy.yaml
+kubectl create -f ~/product/yaml/notebook/notebook-%s-svc.yaml
 
 #export HELM_VERSION=2.10.0
-#echo "export HELM_VERSION=$HELM_VERSION" >> /root/.bashrc
+#echo "export HELM_VERSION=$HELM_VERSION" >> ~/.bashrc
 #echo "export HELM_VERSION=$HELM_VERSION" >> /etc/environment
 
-#cd /root
+#cd ~
 #wget https://storage.googleapis.com/kubernetes-helm/helm-v$HELM_VERSION-linux-amd64.tar.gz
 #tar -xvzf helm-$HELM_VERSION-linux-amd64.tar.gz
 #chmod a+x linux-amd64/helm
@@ -5468,11 +5468,11 @@ kubectl create -f /root/product/yaml/notebook/notebook-%s-svc.yaml
 #kubectl patch deploy --namespace default tiller-deploy -p '{"spec":{"template":{"spec":{"serviceAccount":"tiller"}}}}'
 #helm init --service-account tiller --upgrade --tiller-namespace default
 
-#cd /root
-#helm install --name kafka --set cp-zookeeper.enabled=true,cp-zookeeper.persistence.enabled=false,cp-kafka.enabled=true,cp-kafka.persistence.enabled=false,cp-schema-registry.enabled=false,cp-kafka-rest.enabled=true,cp-kafka-connect.enabled=false,cp-ksql-server.enabled=false /root/product/yaml/kafka/cp-helm-charts
+#cd ~ 
+#helm install --name kafka --set cp-zookeeper.enabled=true,cp-zookeeper.persistence.enabled=false,cp-kafka.enabled=true,cp-kafka.persistence.enabled=false,cp-schema-registry.enabled=false,cp-kafka-rest.enabled=true,cp-kafka-connect.enabled=false,cp-ksql-server.enabled=false product/yaml/kafka/cp-helm-charts
 
 #kubectl delete svc cp-kafka-rest
-#kubectl create -f /root/product/yaml/kafka/kafka-rest-svc.yaml
+#kubectl create -f ~/product/yaml/kafka/kafka-rest-svc.yaml
 """ % (chip, chip)
 
     print(cmd)

@@ -30,7 +30,7 @@ spec:
       containers:
       - name: {{ PIPELINE_IMAGE_REGISTRY_NAMESPACE }}-{{ PIPELINE_RESOURCE_NAME }}
         image: {{ PIPELINE_IMAGE_REGISTRY_URL }}/{{ PIPELINE_IMAGE_REGISTRY_REPO }}/{{ PIPELINE_IMAGE_REGISTRY_NAMESPACE }}-{{ PIPELINE_RESOURCE_NAME }}:{{ PIPELINE_RESOURCE_TAG }} 
-        imagePullPolicy: "Never"
+        imagePullPolicy: "IfNotPresent"
         terminationMessagePolicy: "FallbackToLogsOnError"
         resources:
           limits:
@@ -38,7 +38,7 @@ spec:
             memory: 2500Mi
           requests:
             memory: 2500Mi
-        imagePullPolicy: "Never"
+        imagePullPolicy: "IfNotPresent"
         restartPolicy: "Never"
         terminationMessagePolicy: "FallbackToLogsOnError"
         volumeMounts:
