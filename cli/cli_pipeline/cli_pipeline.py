@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-__version__ = "1.5.222"
+__version__ = "1.5.224"
 
 import base64 as _base64
 import glob as _glob
@@ -1654,7 +1654,7 @@ def env_registry_tag(from_image_registry_url,
                      to_tag,
                      chip=_default_model_chip):
 
-    cmd = 'docker tag %s/%s/%s:%s %s/%s/%s:%s' % (from_image_registry_url, from_image_registry_repo, image, from_tag, to_image_registry_url, to_image_registry_repo, image, to_tag) 
+    cmd = 'docker tag %s/%s/%s:%s %s/%s/%s:%s' % (from_image_registry_url, from_image_registry_repo, from_image, from_tag, to_image_registry_url, to_image_registry_repo, to_image, to_tag) 
     print(cmd)
     _subprocess.call(cmd, shell=True)
     print("")    
@@ -1668,38 +1668,16 @@ def _env_registry_fulltag(from_image_registry_url,
                           to_tag,
                           chip=_default_model_chip):
 
-    for image in _pipelineai_dockerhub_gpu_image_list:
-        env_registry_tag(from_image_registry_url=from_image_registry_url,
-                         from_image_registry_repo=from_image_registry_repo,
-                         from_image=image,
-                         from_tag=from_tag,
-                         to_image_registry_url=to_image_registry_url,
-                         to_image_registry_repo=to_image_registry_repo,
-                         to_image=image,
-                         to_tag=to_tag,
-                         chip=chip)
-
-    for image in _pipelineai_dockerhub_cpu_image_list:
-        env_registry_tag(from_image_registry_url=from_image_registry_url,
-                         from_image_registry_repo=from_image_registry_repo,
-                         from_image=image,
-                         from_tag=from_tag,
-                         to_image_registry_url=to_image_registry_url,
-                         to_image_registry_repo=to_image_registry_repo,
-                         to_image=image,
-                         to_tag=to_tag,
-                         chip=chip)
-
-    for image in _pipelineai_ecr_gpu_image_list:
-        env_registry_tag(from_image_registry_url=from_image_registry_url,
-                         from_image_registry_repo=from_image_registry_repo,
-                         from_image=image,
-                         from_tag=from_tag,
-                         to_image_registry_url=to_image_registry_url,
-                         to_image_registry_repo=to_image_registry_repo,
-                         to_image=image,
-                         to_tag=to_tag,
-                         chip=chip)
+#    for image in _pipelineai_dockerhub_cpu_image_list:
+#        env_registry_tag(from_image_registry_url=from_image_registry_url,
+#                         from_image_registry_repo=from_image_registry_repo,
+#                         from_image=image,
+#                         from_tag=from_tag,
+#                         to_image_registry_url=to_image_registry_url,
+#                         to_image_registry_repo=to_image_registry_repo,
+#                         to_image=image,
+#                         to_tag=to_tag,
+#                         chip=chip)
 
     for image in _pipelineai_ecr_cpu_image_list:
         env_registry_tag(from_image_registry_url=from_image_registry_url,
@@ -1712,13 +1690,36 @@ def _env_registry_fulltag(from_image_registry_url,
                          to_tag=to_tag,
                          chip=chip)
 
+    if chip == 'gpu':
+#        for image in _pipelineai_dockerhub_gpu_image_list:
+#            env_registry_tag(from_image_registry_url=from_image_registry_url,
+#                             from_image_registry_repo=from_image_registry_repo,
+#                             from_image=image,
+#                             from_tag=from_tag,
+#                             to_image_registry_url=to_image_registry_url,
+#                             to_image_registry_repo=to_image_registry_repo,
+#                             to_image=image,
+#                             to_tag=to_tag,
+#                             chip=chip)
+
+        for image in _pipelineai_ecr_gpu_image_list:
+            env_registry_tag(from_image_registry_url=from_image_registry_url,
+                             from_image_registry_repo=from_image_registry_repo,
+                             from_image=image,
+                             from_tag=from_tag,
+                             to_image_registry_url=to_image_registry_url,
+                             to_image_registry_repo=to_image_registry_repo,
+                             to_image=image,
+                             to_tag=to_tag,
+                             chip=chip)
+
 
 def _env_registry_fullsync(tag,
-                          chip=_default_model_chip,
-                          image_registry_url=_default_image_registry_url,
-                          image_registry_repo=_default_image_registry_repo,
-                          private_image_registry_url=_default_ecr_image_registry_url,
-                          private_image_registry_repo=_default_ecr_image_registry_repo):
+                           chip=_default_model_chip,
+                           image_registry_url=_default_image_registry_url,
+                           image_registry_repo=_default_image_registry_repo,
+                           private_image_registry_url=_default_ecr_image_registry_url,
+                           private_image_registry_repo=_default_ecr_image_registry_repo):
 
     env_registry_sync(tag,
                       chip,
@@ -1734,10 +1735,11 @@ def _env_registry_fullsync(tag,
                    private_image_registry_url,
                    private_image_registry_repo)
 
-    _sync_registry(_pipelineai_ecr_gpu_image_list,
-                   tag,
-                   private_image_registry_url,
-                   private_image_registry_repo)
+    if chip == 'gpu':
+        _sync_registry(_pipelineai_ecr_gpu_image_list,
+                       tag,
+                       private_image_registry_url,
+                       private_image_registry_repo)
 
 
     # TODO:  warn about not being whitelisted for private repos.  contact@pipeline.ai
