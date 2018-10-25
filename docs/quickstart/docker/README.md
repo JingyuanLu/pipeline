@@ -34,6 +34,7 @@ pipeline env-registry-sync --tag=1.5.0
 * [Deploy a PyTorch Model](#deploy-a-pytorch-model)
 * [Deploy an Xgboost Model](#deploy-an-xgboost-model)
 * [Deploy an MXNet Model](#deploy-an-mxnet-model)
+* [Deploy a Spark Model](#deploy-a-spark-model)
 
 # Deploy a TensorFlow Model
 
@@ -402,7 +403,51 @@ Notes:
 
 ### Predict with CLI
 ```
-pipeline predict-server-test --endpoint-url=http://localhost:8080/invoke --test-request-path=./tensorflow/mnist-v1/model/pipeline_test_request.json
+pipeline predict-server-test --endpoint-url=http://localhost:8080/invoke --test-request-path=./mxnet/mnist-v1/model/pipeline_test_request.json
+```
+
+# Deploy an Spark Model
+## View Prediction Code
+```
+cat ./spark/mnist-v1/model/pipeline_invoke_jvm.scala
+```
+
+## Build the Spark Model Server
+```
+pipeline predict-server-build --model-name=mnist --model-tag=v1spark --model-type=spark --model-runtime=jvm --model-path=./spark/mnist-v1/model/ 
+```
+* For GPU-based models, make sure you specify `--model-chip=gpu` - and make sure you have `nvidia-docker` installed!
+
+## Start the Spark Model Server
+```
+pipeline predict-server-start --model-name=mnist --model-tag=v1spark
+```
+* Ignore the following warning: `WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap.`
+* For GPU-based models, make sure you specify `--start-cmd=nvidia-docker` - and make sure you have `nvidia-docker` installed!
+
+## View the Spark Model Server Logs
+```
+pipeline predict-server-logs --model-name=mnist --model-tag=v1spark
+```
+
+## Model Predict
+### Predict with REST API
+```
+curl -X POST -H "Content-Type: application/json" \
+  -d '{"image": [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,10,150,238,254,255,237,150,150,225,161,221,203,18,0,0,0,0,0,0,0,0,0,0,0,0,0,0,66,146,253,253,253,253,253,253,253,253,253,253,253,173,0,0,0,0,0,0,0,0,0,0,0,0,0,140,251,253,253,178,114,114,114,114,114,114,167,253,253,154,0,0,0,0,0,0,0,0,0,0,0,12,84,240,253,248,170,28,0,0,0,0,0,0,90,253,250,90,0,0,0,0,0,0,0,0,0,0,10,129,226,253,235,128,0,0,0,0,0,0,0,8,188,253,190,0,0,0,0,0,0,0,0,0,0,0,56,250,253,246,98,0,0,0,0,0,0,0,0,76,243,234,100,0,0,0,0,0,0,0,0,0,0,0,185,253,248,44,0,0,0,0,0,0,0,0,34,245,253,95,0,0,0,0,0,0,0,0,0,0,0,0,69,187,87,0,0,0,0,0,0,0,0,22,164,253,223,63,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,55,247,253,85,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,47,230,253,184,10,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,145,253,241,43,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,57,250,253,206,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,135,253,253,40,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,105,251,248,108,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,68,226,253,180,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,40,233,253,205,13,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,5,189,253,240,72,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,110,253,253,109,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,47,242,253,159,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,43,198,228,24,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]}' \
+  http://localhost:8080 \
+  -w "\n\n"
+```
+Notes:
+* You may see `502 Bad Gateway` or `'{"results":["Fallback!"]}'` if you predict too quickly.  Let the server settle a bit - and try again.
+* You will likely see `Fallback!` on the first successful invocation.  This is GOOD!  This means your timeouts are working.  Check out the `PIPELINE_MODEL_SERVER_TIMEOUT_MILLISECONDS` in `pipeline_modelserver.properties`.
+* If you continue to see `Fallback!` even after a minute or two, you may need to increase the value of   `PIPELINE_MODEL_SERVER_TIMEOUT_MILLISECONDS` in `pipeline_modelserver.properties`.  (This is rare as the default is 5000 milliseconds, but it may happen.)
+* Instead of `localhost`, you may need to use `192.168.99.100` or another IP/Host that maps to your local Docker host.  This usually happens when using Docker Quick Terminal on Windows 7.
+* If you're having trouble, see our [**Troubleshooting**](/docs/troubleshooting) Guide.
+
+### Predict with CLI
+```
+pipeline predict-server-test --endpoint-url=http://localhost:8080/invoke --test-request-path=./spark/mnist-v1/model/pipeline_test_request.json
 ```
 
 ## Train Models with PipelineAI
