@@ -406,7 +406,7 @@ Notes:
 pipeline predict-server-test --endpoint-url=http://localhost:8080/invoke --test-request-path=./mxnet/mnist-v1/model/pipeline_test_request.json
 ```
 
-# Deploy an Spark Model
+# Deploy a Spark Model
 ## View Prediction Code
 ```
 cat ./spark/mnist-v1/model/pipeline_invoke_jvm.scala
