@@ -9,7 +9,7 @@ import com.netflix.hystrix.HystrixCommandProperties
 import com.netflix.hystrix.HystrixThreadPoolKey
 import com.netflix.hystrix.HystrixThreadPoolProperties
 
-class JavaSourceCodeEvaluationCommand(modelName: String, 
+class JavaSourceCodeCommand(modelName: String, 
                                       modelTag: String,
                                       modelType: String, 
                                       modelRuntime: String,

@@ -54,6 +54,7 @@ lazy val deps = Seq(
   "ml.combust.mleap" %% "mleap-runtime" % mleapVersion,
   "ml.combust.mleap" %% "mleap-base" % mleapVersion,
   "ml.combust.mleap" %% "mleap-spark" % mleapVersion,
+  "ml.combust.mleap" %% "mleap-spark-base" % mleapVersion,
   "org.scalanlp"         %% "breeze"                       % breezeVersion % "provided",
   "redis.clients"      % "jedis"     % jedisVersion, 
   "org.springframework.boot" % "spring-boot-starter-actuator" % springBootVersion,

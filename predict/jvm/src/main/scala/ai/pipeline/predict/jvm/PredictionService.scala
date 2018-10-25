@@ -43,6 +43,67 @@ import redis.clients.jedis.JedisPoolConfig
 import java.nio.file.StandardCopyOption
 import java.nio.file.Path
 
+import ml.combust.bundle.BundleFile
+import ai.pipeline.predict.jvm.CodeGenBundle
+import ai.pipeline.predict.jvm.UserItemPredictionCommand
+import ai.pipeline.predict.jvm.UserItemBatchPredictionCollapser
+import ai.pipeline.predict.jvm.CodeFormatter
+import ai.pipeline.predict.jvm.Predictable
+import ai.pipeline.predict.jvm.CodeGenBundle
+import ai.pipeline.predict.jvm.UserItemPredictionCommand
+import ai.pipeline.predict.jvm.UserItemBatchPredictionCollapser
+import ai.pipeline.predict.jvm.CodeFormatter
+import ai.pipeline.predict.jvm.Predictable
+
+import ml.combust.mleap.runtime.transformer.Pipeline
+import ml.combust.mleap.runtime.frame.Transformer
+
+import resource._
+
+import ml.combust.bundle.BundleFile
+import ml.combust.mleap.runtime.MleapSupport._
+
+import ml.combust.mleap.runtime.serialization.FrameReader
+
+import resource._
+// https://github.com/combust/mleap/pull/286
+import ml.combust.mleap.runtime.MleapSupport
+import ml.combust.bundle.BundleFile
+
+// MLeap/Bundle.ML Serialization Libraries
+// import ml.combust.mleap.spark.SparkSupport._
+import resource._
+import ml.combust.bundle.BundleFile
+import org.apache.spark.ml.bundle.SparkBundleContext
+
+import ml.combust.mleap.runtime.MleapContext.defaultContext
+import java.io.File
+
+import org.apache.spark.ml.mleap.SparkUtil
+import ml.combust.mleap.runtime.frame.FrameBuilder
+import ml.combust.mleap.runtime.frame.DefaultLeapFrame
+
+import ml.combust.bundle.BundleFile
+import ml.combust.mleap.runtime.MleapSupport._
+
+import ml.combust.mleap.runtime.serialization.FrameReader
+
+// https://github.com/combust/mleap/pull/286
+import ml.combust.mleap.runtime.MleapSupport
+import ml.combust.bundle.BundleFile
+
+// MLeap/Bundle.ML Serialization Libraries
+// import ml.combust.mleap.spark.SparkSupport._
+import ml.combust.bundle.BundleFile
+import org.apache.spark.ml.bundle.SparkBundleContext
+
+import ml.combust.mleap.runtime.MleapContext.defaultContext
+import java.io.File
+
+import org.apache.spark.ml.mleap.SparkUtil
+import ml.combust.mleap.runtime.frame.FrameBuilder
+import ml.combust.mleap.runtime.frame.DefaultLeapFrame
+
 @SpringBootApplication
 @RestController
 @EnableHystrix
@@ -74,6 +135,7 @@ class PredictionService {
   val TYPE_TENSORFLOW = "tensorflow"
   val TYPE_XGBOOST = "xgboost"
 
+  val sparkRegistry = new scala.collection.mutable.HashMap[String, Transformer]
   val pmmlRegistry = new scala.collection.mutable.HashMap[String, Evaluator]
   val predictorRegistry = new scala.collection.mutable.HashMap[String, Predictable]
   val modelRegistry = new scala.collection.mutable.HashMap[String, Array[Byte]]
@@ -106,13 +168,13 @@ class PredictionService {
                   method=Array(RequestMethod.POST),
                   produces=Array("application/json; charset=UTF-8"))
   def invoke(@RequestBody httpRequestBody: String,
-              @RequestHeader(name="x-request-id", required=false) xreq: String,
-              @RequestHeader(name="x-b3-traceid", required=false) xtraceid: String,
-              @RequestHeader(name="x-b3-spanid", required=false) xspanid: String,
-              @RequestHeader(name="x-b3-parentspanid", required=false) xparentspanid: String,
-              @RequestHeader(name="x-b3-sampled", required=false) xsampled: String,
-              @RequestHeader(name="x-b3-flags", required=false) xflags: String,
-              @RequestHeader(name="x-ot-span-context", required=false) xotspan: String)
+             @RequestHeader(name="x-request-id", required=false) xreq: String,
+             @RequestHeader(name="x-b3-traceid", required=false) xtraceid: String,
+             @RequestHeader(name="x-b3-spanid", required=false) xspanid: String,
+             @RequestHeader(name="x-b3-parentspanid", required=false) xparentspanid: String,
+             @RequestHeader(name="x-b3-sampled", required=false) xsampled: String,
+             @RequestHeader(name="x-b3-flags", required=false) xflags: String,
+             @RequestHeader(name="x-ot-span-context", required=false) xotspan: String)
       : ResponseEntity[String] = {
 
     // TODO:  Pass the ZipKin/Jaeger Headers through all of these methods.
@@ -189,9 +251,9 @@ class PredictionService {
                   method=Array(RequestMethod.POST),
                   produces=Array("application/json; charset=UTF-8"))
   def invokeJava(@PathVariable("modelChip") modelChip: String,
-                  @PathVariable("modelName") modelName: String,
-                  @PathVariable("modelTag") modelTag: String,
-                  @RequestBody inputJson: String): String = {
+                 @PathVariable("modelName") modelName: String,
+                 @PathVariable("modelTag") modelTag: String,
+                 @RequestBody inputJson: String): String = {
 
       val modelRuntime = "jvm"
       val modelType = "java"
@@ -229,7 +291,7 @@ class PredictionService {
         }
       } 
           
-      new JavaSourceCodeEvaluationCommand(modelName, 
+      new JavaSourceCodeCommand(modelName, 
                                           modelTag, 
                                           modelType, 
                                           modelRuntime, 
@@ -371,7 +433,7 @@ class PredictionService {
   @RequestMapping(path=Array("/api/v1/model/invoke/jvm/{modelChip}/xgboost/{modelName}/{modelTag}"),
                   method=Array(RequestMethod.POST),
                   produces=Array("application/json; charset=UTF-8"))
-  def invokeXgboost(@PathVariable("modelChip") modelChip: String,
+  def invokeXgboostAsPMMLUnused(@PathVariable("modelChip") modelChip: String,
                      @PathVariable("modelName") modelName: String,
                      @PathVariable("modelTag") modelTag: String,
                      @RequestBody inputJson: String): String = {
@@ -430,16 +492,15 @@ class PredictionService {
                                 ).execute()
   }    
 
- 
   // curl -i -X POST -v -H "Transfer-Encoding: chunked" \
   //  http://[host]:[port]/api/v1/model/invoke/jvm/spark/[model_name]/[model_tag]
   @RequestMapping(path=Array("/blah/blah/blah/api/v1/model/invoke/jvm/{modelChip}/spark/{modelName}/{modelTag}"),
                   method=Array(RequestMethod.POST),
                   produces=Array("application/json; charset=UTF-8"))
-    def invokeSpark(@PathVariable("modelChip") modelChip: String,
-                     @PathVariable("modelName") modelName: String,
-                     @PathVariable("modelTag") modelTag: String,
-                     @RequestBody inputJson: String): String = {
+    def invokeSparkAsPMMLUnused(@PathVariable("modelChip") modelChip: String,
+                                @PathVariable("modelName") modelName: String,
+                                @PathVariable("modelTag") modelTag: String,
+                                @RequestBody inputJson: String): String = {
       
       val parsedInputOption = JSON.parseFull(inputJson)
       val inputs: Map[String, Any] = parsedInputOption match {
@@ -489,17 +550,68 @@ class PredictionService {
                                 timeoutMillis, // 100 
                                 concurrencyPoolSizeNumThreads, // 20 
                                 rejectionThresholdNumRejections // 10
-
           ).execute()
   }
+ 
+  // curl -i -X POST -v -H "Transfer-Encoding: chunked" \
+  //  http://[host]:[port]/api/v1/model/invoke/jvm/spark/[model_name]/[model_tag]
+  @RequestMapping(path=Array("/blah/blah/blah/api/v1/model/invoke/jvm/{modelChip}/spark/{modelName}/{modelTag}"),
+                  method=Array(RequestMethod.POST),
+                  produces=Array("application/json; charset=UTF-8"))
+    def invokeSpark(@PathVariable("modelChip") modelChip: String,
+                    @PathVariable("modelName") modelName: String,
+                    @PathVariable("modelTag") modelTag: String,
+                    @RequestBody inputJson: String): String = {
+      
+      val parsedInputOption = JSON.parseFull(inputJson)
+      val inputs: Map[String, Any] = parsedInputOption match {
+        case Some(parsedInput) => parsedInput.asInstanceOf[Map[String, Any]]
+        case None => Map[String, Any]() 
+      }
+
+      val modelRuntime = "jvm"
+      val modelType = "spark"
+      
+      val modelPath =  System.getenv("PIPELINE_RESOURCE_PATH")
+      val modelTransformerOption = sparkRegistry.get(modelPath)
+
+      val modelTransformer = modelTransformerOption match {
+        case None => {    
+          // TODO:  Add s"${modelPath}" vs. hard-code
+          val modelTransformer = (for(bf <- managed(BundleFile(s"jar:file:/root/pipeline_bundle.zip"))) yield {
+            bf.loadMleapBundle().get.root
+          }).tried.get
+    
+          // Cache pipeline 
+          sparkRegistry.put(modelPath, modelTransformer)
+          
+          modelTransformer
+        }
+        case Some(modelTransformer) => modelTransformer
+      }                 
+  
+      new SparkCommand(modelName, 
+                             modelTag, 
+                             modelType, 
+                             modelRuntime, 
+                             modelChip, 
+                             modelTransformer, 
+                             inputs, 
+                             fallbackString, 
+                             timeoutMillis, // 25 
+                             concurrencyPoolSizeNumThreads, // 20 
+                             rejectionThresholdNumRejections // 10
+                             ).execute()
+  }
+    
   
  @RequestMapping(path=Array("/api/v1/model/invoke/redis/keyvalue/{namespace}/{collection}/{version}/{userId}/{itemId}"),
-                  produces=Array("application/json; charset=UTF-8"))
+                 produces=Array("application/json; charset=UTF-8"))
   def invokeKeyValue(@PathVariable("namespace") namespace: String,
-                      @PathVariable("collection") collection: String,
-                      @PathVariable("version") version: String,
-                      @PathVariable("userId") userId: String, 
-                      @PathVariable("itemId") itemId: String): String = {
+                     @PathVariable("collection") collection: String,
+                     @PathVariable("version") version: String,
+                     @PathVariable("userId") userId: String, 
+                     @PathVariable("itemId") itemId: String): String = {
     try {
       val result = new UserItemPredictionCommand("redis", "redis_keyvalue_useritem", namespace, version, -1.0d, 25, 5, 10, userId, itemId)           
         .execute()
