@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-__version__ = "1.5.224"
+__version__ = "1.5.225"
 
 import base64 as _base64
 import glob as _glob
@@ -1651,8 +1651,7 @@ def env_registry_tag(from_image_registry_url,
                      to_image_registry_url,
                      to_image_registry_repo,
                      to_image,
-                     to_tag,
-                     chip=_default_model_chip):
+                     to_tag): 
 
     cmd = 'docker tag %s/%s/%s:%s %s/%s/%s:%s' % (from_image_registry_url, from_image_registry_repo, from_image, from_tag, to_image_registry_url, to_image_registry_repo, to_image, to_tag) 
     print(cmd)
@@ -1668,17 +1667,6 @@ def _env_registry_fulltag(from_image_registry_url,
                           to_tag,
                           chip=_default_model_chip):
 
-#    for image in _pipelineai_dockerhub_cpu_image_list:
-#        env_registry_tag(from_image_registry_url=from_image_registry_url,
-#                         from_image_registry_repo=from_image_registry_repo,
-#                         from_image=image,
-#                         from_tag=from_tag,
-#                         to_image_registry_url=to_image_registry_url,
-#                         to_image_registry_repo=to_image_registry_repo,
-#                         to_image=image,
-#                         to_tag=to_tag,
-#                         chip=chip)
-
     for image in _pipelineai_ecr_cpu_image_list:
         env_registry_tag(from_image_registry_url=from_image_registry_url,
                          from_image_registry_repo=from_image_registry_repo,
@@ -1687,21 +1675,9 @@ def _env_registry_fulltag(from_image_registry_url,
                          to_image_registry_url=to_image_registry_url,
                          to_image_registry_repo=to_image_registry_repo,
                          to_image=image,
-                         to_tag=to_tag,
-                         chip=chip)
+                         to_tag=to_tag)
 
     if chip == 'gpu':
-#        for image in _pipelineai_dockerhub_gpu_image_list:
-#            env_registry_tag(from_image_registry_url=from_image_registry_url,
-#                             from_image_registry_repo=from_image_registry_repo,
-#                             from_image=image,
-#                             from_tag=from_tag,
-#                             to_image_registry_url=to_image_registry_url,
-#                             to_image_registry_repo=to_image_registry_repo,
-#                             to_image=image,
-#                             to_tag=to_tag,
-#                             chip=chip)
-
         for image in _pipelineai_ecr_gpu_image_list:
             env_registry_tag(from_image_registry_url=from_image_registry_url,
                              from_image_registry_repo=from_image_registry_repo,
@@ -1710,8 +1686,38 @@ def _env_registry_fulltag(from_image_registry_url,
                              to_image_registry_url=to_image_registry_url,
                              to_image_registry_repo=to_image_registry_repo,
                              to_image=image,
-                             to_tag=to_tag,
-                             chip=chip)
+                             to_tag=to_tag)
+
+def env_registry_push(image_registry_url,
+                      image_registry_repo,
+                      image,
+                      tag):
+
+    cmd = 'docker push %s/%s/%s:%s' % (image_registry_url, registry_repo, image, tag)
+    print(cmd)
+    _subprocess.call(cmd, shell=True)
+    print("")
+
+
+def _env_registry_fullpush(image_registry_url,
+                           image_registry_repo,
+                           tag,
+                           chip=_default_model_chip):
+
+    for image in _pipelineai_ecr_cpu_image_list:
+        env_registry_push(image_registry_url=image_registry_url,
+                          image_registry_repo=image_registry_repo,
+                          image=image,
+                          tag=tag,
+                          chip=chip)
+
+    if chip == 'gpu':
+        for image in _pipelineai_ecr_gpu_image_list:
+            env_registry_push(image_registry_url=image_registry_url,
+                              image_registry_repo=image_registry_repo,
+                              image=image,
+                              tag=tag,
+                              chip=chip)
 
 
 def _env_registry_fullsync(tag,
