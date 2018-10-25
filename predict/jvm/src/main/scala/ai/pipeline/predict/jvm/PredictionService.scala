@@ -494,7 +494,7 @@ class PredictionService {
 
   // curl -i -X POST -v -H "Transfer-Encoding: chunked" \
   //  http://[host]:[port]/api/v1/model/invoke/jvm/spark/[model_name]/[model_tag]
-  @RequestMapping(path=Array("/blah/blah/blah/api/v1/model/invoke/jvm/{modelChip}/spark/{modelName}/{modelTag}"),
+  @RequestMapping(path=Array("/blah/blah/blah/api/v1/model/invoke/jvm/{modelChip}/spark-pmml/{modelName}/{modelTag}"),
                   method=Array(RequestMethod.POST),
                   produces=Array("application/json; charset=UTF-8"))
     def invokeSparkAsPMMLUnused(@PathVariable("modelChip") modelChip: String,
