@@ -575,33 +575,33 @@ class PredictionService {
       val modelPath =  System.getenv("PIPELINE_RESOURCE_PATH")
       val modelTransformerOption = sparkRegistry.get(modelPath)
 
-      val modelTransformer = modelTransformerOption match {
-        case None => {    
-          // TODO:  Add s"${modelPath}" vs. hard-code
-          val modelTransformer = (for(bf <- managed(BundleFile(s"jar:file:/root/pipeline_bundle.zip"))) yield {
-            bf.loadMleapBundle().get.root
-          }).tried.get
+      // val modelTransformer = modelTransformerOption match {
+      //  case None => {    
+      //    // TODO:  Add s"${modelPath}" vs. hard-code
+      //    val modelTransformer = (for(bf <- managed(BundleFile(s"jar:file:/root/pipeline_bundle.zip"))) yield {
+      //      bf.loadMleapBundle().get.root
+      //    }).tried.get
     
           // Cache pipeline 
-          sparkRegistry.put(modelPath, modelTransformer)
+      //    sparkRegistry.put(modelPath, modelTransformer)
           
-          modelTransformer
-        }
-        case Some(modelTransformer) => modelTransformer
-      }                 
+      //    modelTransformer
+      //  }
+      //  case Some(modelTransformer) => modelTransformer
+      // }                 
   
       new SparkCommand(modelName, 
-                             modelTag, 
-                             modelType, 
-                             modelRuntime, 
-                             modelChip, 
-                             modelTransformer, 
-                             inputs, 
-                             fallbackString, 
-                             timeoutMillis, // 25 
-                             concurrencyPoolSizeNumThreads, // 20 
-                             rejectionThresholdNumRejections // 10
-                             ).execute()
+                       modelTag, 
+                       modelType, 
+                       modelRuntime, 
+                       modelChip, 
+                       // modelTransformer, 
+                       inputs, 
+                       fallbackString, 
+                       timeoutMillis, // 25 
+                       concurrencyPoolSizeNumThreads, // 20 
+                       rejectionThresholdNumRejections // 10
+                       ).execute()
   }
     
   

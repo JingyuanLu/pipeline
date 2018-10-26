@@ -16,16 +16,16 @@ import ml.combust.mleap.runtime.frame.Transformer
 
 
 class SparkCommand(modelName: String, 
-                         modelTag: String,
-                         modelType: String, 
-                         modelRuntime: String,
-                         modelChip: String,
-                         modelTransformer: Transformer, 
-                         inputs: Map[String, Any],
-                         fallback: String, 
-                         timeout: Int, 
-                         concurrencyPoolSize: Int, 
-                         rejectionThreshold: Int)
+                   modelTag: String,
+                   modelType: String, 
+                   modelRuntime: String,
+                   modelChip: String,
+                   // modelTransformer: Transformer, 
+                   inputs: Map[String, Any],
+                   fallback: String, 
+                   timeout: Int, 
+                   concurrencyPoolSize: Int, 
+                   rejectionThreshold: Int)
   extends HystrixCommand[String](
     HystrixCommand.Setter
       .withGroupKey(HystrixCommandGroupKey.Factory.asKey(modelName + ":" + modelTag))
