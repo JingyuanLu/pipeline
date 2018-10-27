@@ -73,14 +73,6 @@ ENV \
   LOGS_HOME=/root/logs
 
 COPY sysutils/ sysutils/
-COPY jvm/ jvm/
-
-ENV \
-  PIPELINE_JVM_MODEL_SERVER_PATH=/root/jvm
-
-RUN \
-  cd $PIPELINE_JVM_MODEL_SERVER_PATH \
-  && ./build.sh
 
 ENV \
   CONFLUENT_VERSION=5.0.0 \
@@ -174,13 +166,7 @@ RUN \
 
 COPY config/kafka/ config/kafka/
 
-#RUN \
-# echo "Installing Caffe..." \
-# && echo "deb http://ftp2.cn.debian.org/debian sid main contrib non-free" | tee /etc/apt/sources.list.d/caffe2.list \
-# && apt-get install -y caffe-cuda
-
 ENV \
-#  LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
   LD_LIBRARY_PATH=${LD_LIBRARY_PATH:+${LD_LIBRARY_PATH}:}/usr/lib/x86_64-linux-gnu:/usr/local/cuda/lib64:/usr/local/cuda-9.0/lib64:/usr/local/cuda/extras/CUPTI/lib64
 
 RUN \
@@ -202,40 +188,21 @@ RUN \
        libcudnn7-dev=7.0.5.15-1+cuda9.0 \
        libcudnn7=7.0.5.15-1+cuda9.0
 
+COPY jvm/ jvm/
+
+ENV \
+  PIPELINE_JVM_MODEL_SERVER_PATH=/root/jvm
+
+RUN \
+  cd $PIPELINE_JVM_MODEL_SERVER_PATH \
+  && ./build.sh
+
 # Don't forget to update the pipeline cli if these ports change!
 EXPOSE \
-  # Nginx (80 is too common and could clash with local development) \
   8080 \
-  # Python-based Model Server (Primary Model) \
-#  9876 \
-  # TensorFlow-based Model Server (Primary Model) \
-#  9000 \
-  # JVM-based Model Server (Primary Model) \
-#  9040 \
-  # Prometheus Metrics Server \
   9090 \
-  # Grafana Dashboards \
   3000 
-  # Kafka Broker \
-#  9092 \
-  # Kafka REST API \
-#  8082 \
-  # Kafka Schema Manager \
-#  8081 \
-  # ZooKeeper \
-#  2181 \
-  # WebSocket-based Kafka Consumer \
-#  5959 \
-  # TensorBoard \
-#  6006 \
-  # TensorFlow Training UI (Guild) \
-#  6333 \
-  # Hystrix Dashboard \
-#  7979 \
-  # Prometheus Endpoint (Python)
-#  10254
 
 COPY run run
 
-# Executes the ./run script upon startup
 ENTRYPOINT ["./run"]
