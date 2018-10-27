@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-__version__ = "1.5.225"
+__version__ = "1.5.226"
 
 import base64 as _base64
 import glob as _glob
@@ -1708,16 +1708,14 @@ def _env_registry_fullpush(image_registry_url,
         env_registry_push(image_registry_url=image_registry_url,
                           image_registry_repo=image_registry_repo,
                           image=image,
-                          tag=tag,
-                          chip=chip)
+                          tag=tag)
 
     if chip == 'gpu':
         for image in _pipelineai_ecr_gpu_image_list:
             env_registry_push(image_registry_url=image_registry_url,
                               image_registry_repo=image_registry_repo,
                               image=image,
-                              tag=tag,
-                              chip=chip)
+                              tag=tag)
 
 
 def _env_registry_fullsync(tag,
