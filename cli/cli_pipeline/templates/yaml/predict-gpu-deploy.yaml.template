@@ -39,7 +39,7 @@ spec:
           requests:
             memory: 2500Mi
         imagePullPolicy: "IfNotPresent"
-        restartPolicy: "Never"
+#        restartPolicy: "Always"
         terminationMessagePolicy: "FallbackToLogsOnError"
         volumeMounts:
         - name: cuda

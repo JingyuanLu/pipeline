@@ -42,7 +42,7 @@ spec:
           requests:
             memory: 1000Mi
         imagePullPolicy: "IfNotPresent"
-        restartPolicy: "Never"
+#        restartPolicy: "Always"
         terminationMessagePolicy: "FallbackToLogsOnError"
         env:
         - name: PIPELINE_STREAM_LOGGER_URL

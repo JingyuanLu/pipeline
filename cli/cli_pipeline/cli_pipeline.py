@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-__version__ = "1.5.226"
+__version__ = "1.5.227"
 
 import base64 as _base64
 import glob as _glob
@@ -1061,6 +1061,223 @@ def _get_resource_meta_data(
         'worker_replicas': worker_replicas,
     }
     return resource_dict
+
+
+def resource_optimize_and_train(
+    host,
+    user_id,
+    resource_type,
+    name,
+    tag,
+    resource_subtype,
+    runtime_list,
+    chip_list,
+    resource_id,
+    kube_resource_type_list=None,
+    build_type=None,
+    build_context_path=None,
+    namespace=None,
+    squash=False,
+    no_cache=False,
+    http_proxy=None,
+    https_proxy=None,
+    image_registry_url=None,
+    image_registry_repo=None,
+    image_registry_namespace=None,
+    image_registry_base_tag=None,
+    image_registry_base_chip=None,
+    pipeline_templates_path=None,
+    stream_logger_url=None,
+    stream_logger_topic=None,
+    stream_input_url=None,
+    stream_input_topic=None,
+    stream_output_url=None,
+    stream_output_topic=None,
+    stream_enable_mqtt=False,
+    stream_enable_kafka_rest_api=False,
+    input_host_path=None,
+    master_replicas=1,
+    output_host_path=None,
+    ps_replicas=1,
+    train_args=None,
+    training_runs_host_path=None,
+    worker_replicas=1,
+    verify=False,
+    cert=None,
+    timeout=None
+):
+    """
+    Initialize, build and create one or more kubernetes resources.
+
+    :param str host:                                PipelineAI host server dns name
+    :param str user_id:                             PipelineAI 8 character user id that uniquely
+                                                        identifies the user that created the resource
+                                                        for super users this user_id is not
+                                                        always the current user
+                                                        for non-super users this user_id is always
+                                                        the current user
+    :param str resource_type:                       Type of resource (job, function, model, stream)
+    :param str name:                                User defined name for the resource
+    :param str tag:                                 User defined tag for the resource
+    :param str resource_subtype:                    Framework type, tensorflow or pmml for models,
+                                                        kafka or mqtt for stream
+    :param list runtime_list:                       List of one or more runtime(s) that should be used
+                                                        to serve the resource
+                                                        Valid values are python, tfserving, tflite
+    :param list chip_list:                          List of one or more hardware chip(s) that should be
+                                                        used to serve the resource
+                                                        Valid values are [cpu, gpu, tpu]
+    :param str resource_id:                         Id that uniquely identifies the trained resource
+    :param list kube_resource_type_list:            (Optional) List of strings containing the kubernetes resource
+                                                        type names to generate yaml files for.
+                                                        valid values are [deploy, svc, ingress, routerules]
+    :param str build_type:                          (Optional)
+    :param str build_context_path:                  (Optional)
+    :param str namespace:                           (Optional) Namespace provides a scope for names. Names of
+                                                        resources need to be unique within namespace,
+                                                        but not across namespaces.
+    :param bool squash:                             (Optional) docker context
+    :param bool no_cache:                           (Optional) docker context
+    :param str http_proxy:                          (Optional) docker context
+    :param str https_proxy:                         (Optional) docker context
+    :param str image_registry_url:                  (Optional) docker context
+    :param str image_registry_repo:                 (Optional) docker context
+    :param str image_registry_namespace:            (Optional) docker context - image name prefix
+    :param str image_registry_base_tag:             (Optional) docker context
+    :param str image_registry_base_chip:            (Optional) docker context
+    :param str pipeline_templates_path:             (Optional) directory path to PipelineAI yaml templates
+    :param str stream_logger_url:                   (Optional)
+    :param str stream_logger_topic:                 (Optional)
+    :param str stream_input_url:                    (Optional)
+    :param str stream_input_topic:                  (Optional)
+    :param str stream_output_url:                   (Optional)
+    :param str stream_output_topic:                 (Optional)
+    :param str stream_enable_mqtt:                  (Optional) bool Default: False
+    :param str stream_enable_kafka_rest_api:        (Optional) bool Default: False
+    :param str input_host_path:                     (Optional) train context
+    :param int master_replicas:                     (Optional) train context
+    :param str output_host_path:                    (Optional) train context
+    :param int ps_replicas:                         (Optional) train context
+    :param str train_args:                          (Optional) train context
+    :param str training_runs_host_path:             (Optional) train context
+    :param int worker_replicas:                     (Optional) train context
+    :param bool verify:                             (optional) Either a boolean, in which case it
+                                                        controls whether we verify the server's
+                                                        TLS certificate, or a string, in which case
+                                                        it must be a path to a CA bundle to use.
+                                                        Defaults to ``False``.
+    :param tuple cert:                              (optional) if String, path to ssl client cert file
+                                                        (.pem). If Tuple, ('cert', 'key') pair.
+    :param int timeout:                             subprocess command timeout in seconds
+
+    Examples:
+
+    Train all kubernetes resources on cpu chip served by python and tfserving runtimes::
+
+        pipeline resource-optimize-and-train --host community.cloud.pipeline.ai --user-id <YOUR-USER-ID> --resource-type model --name mnist --tag <YOUR-TAG-NAME> --resource-subtype tensorflow --runtime-list \[python,tfserving\] --chip-list \[cpu\] --resource-id <YOUR-RESOURCE-ID> --kube-resource-type-list \[deploy,svc,ingress,routerules\]
+
+    Train all kubernetes resources on cpu and gpu chips served by tflite runtime::
+
+        pipeline resource-optimize-and-train --host community.cloud.pipeline.ai --user-id <YOUR-USER-NAME> --resource-type model --name mnist --tag <YOUR-TAG-NAME> --resource-subtype tensorflow --runtime-list \[tflite\] --chip-list \[cpu,gpu\] --resource-id <YOUR-RESOURCE-ID> --kube-resource-type-list \[deploy,svc,ingress,routerules\]
+
+    :rtype:                                         list
+    :return:                                        list containing the file names of the generated
+                                                        kubernetes yaml files.
+    """
+
+    print('')
+    print('Started...')
+    print('')
+
+    name = _validate_and_prep_name(name)
+    tag = _validate_and_prep_tag(tag)
+    resource_config = _get_resource_config(resource_type)
+    if not namespace:
+        namespace = resource_config['namespace']
+    if not image_registry_namespace:
+        image_registry_namespace = resource_config['image_registry_namespace']
+    if not timeout:
+        timeout = _DEFAULT_SUBPROCESS_TIMEOUT_SECONDS
+
+    _validate_chips(chip_list)
+    _validate_runtimes(runtime_list)
+
+    return_dict = dict()
+    status_list = list()
+    status_code_list = list()
+
+    if not kube_resource_type_list:
+        kube_resource_type_list = resource_config['kube_resource_type_list'] 
+
+    endpoint = 'resource-optimize-and-train'
+    url = _get_api_url(host, endpoint)
+    json_body = {
+        'user_id': user_id,
+        'resource_type': resource_type,
+        'name': name,
+        'tag': tag,
+        'resource_subtype': resource_subtype,
+        'runtime_list': runtime_list,
+        'chip_list': chip_list,
+        'resource_id': resource_id,
+        'kube_resource_type_list': kube_resource_type_list,
+        'build_type': build_type,
+        'build_context_path': build_context_path,
+        'namespace': namespace,
+        'squash': squash,
+        'no_cache': no_cache,
+        'http_proxy': http_proxy,
+        'https_proxy': https_proxy,
+        'image_registry_url': image_registry_url,
+        'image_registry_repo': image_registry_repo,
+        'image_registry_namespace': image_registry_namespace,
+        'image_registry_base_tag': image_registry_base_tag,
+        'image_registry_base_chip': image_registry_base_chip,
+        'pipeline_templates_path': pipeline_templates_path,
+        'stream_logger_url': stream_logger_url,
+        'stream_logger_topic': stream_logger_topic,
+        'stream_input_url': stream_input_url,
+        'stream_input_topic': stream_input_topic,
+        'stream_output_url': stream_output_url,
+        'stream_output_topic': stream_output_topic,
+        'stream_enable_mqtt': stream_enable_mqtt,
+        'stream_enable_kafka_rest_api': stream_enable_kafka_rest_api,
+        'input_host_path': input_host_path,
+        'master_replicas': master_replicas,
+        'output_host_path': output_host_path,
+        'ps_replicas': ps_replicas,
+        'train_args': train_args,
+        'training_runs_host_path': training_runs_host_path,
+        'worker_replicas': worker_replicas
+    }
+
+    response = _requests.post(
+        url=url,
+        json=json_body,
+        verify=verify,
+        cert=cert,
+        timeout=timeout
+    )
+
+    status_code = response.status_code
+    status_code_list.append(status_code)
+
+    if status_code > _HTTP_STATUS_SUCCESS_CREATED:
+        status_list.append('incomplete')
+        return_dict['error_message'] = '%s %s' % (endpoint, status_code)
+    else:
+        status_list.append('complete')
+        return_dict[endpoint] = response.json()
+
+    status = max(status_list)
+    status_code = max(status_code_list)
+    return_dict.update({'status': status})
+
+    print('')
+    print('...Completed')
+    print('')
+
+    return return_dict, status_cod
 
 
 def resource_optimize_and_deploy(
