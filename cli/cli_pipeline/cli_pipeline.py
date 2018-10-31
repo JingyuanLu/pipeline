@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-__version__ = "1.5.227"
+__version__ = "1.5.228"
 
 import base64 as _base64
 import glob as _glob
@@ -1910,7 +1910,7 @@ def env_registry_push(image_registry_url,
                       image,
                       tag):
 
-    cmd = 'docker push %s/%s/%s:%s' % (image_registry_url, registry_repo, image, tag)
+    cmd = 'docker push %s/%s/%s:%s' % (image_registry_url, image_registry_repo, image, tag)
     print(cmd)
     _subprocess.call(cmd, shell=True)
     print("")
