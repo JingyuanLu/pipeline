@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-__version__ = "1.5.228"
+__version__ = "1.5.229"
 
 import base64 as _base64
 import glob as _glob
@@ -96,7 +96,7 @@ _job_subdir_name = 'job'
 _function_subdir_name = 'function'
 _model_subdir_name = 'model'
 _stream_subdir_name = 'stream'
-_train_subdir_name = 'train'
+_train_subdir_name = 'model'
 _default_type = 'tensorflow'
 
 if _sys.version_info.major == 3:
@@ -291,9 +291,9 @@ _PIPELINE_STREAMS_HOME = _environ.get(
     "PIPELINE_STREAMS_HOME",
     _environ.get("DEFAULT_PIPELINE_STREAMS_HOME")
 )
-_PIPELINE_TRAINING_HOME = _environ.get(
-    "PIPELINE_TRAINING_HOME",
-    _environ.get("DEFAULT_PIPELINE_TRAINING_HOME")
+_PIPELINE_TRAIN_HOME = _environ.get(
+    "PIPELINE_TRAIN_HOME",
+    _environ.get("DEFAULT_PIPELINE_TRAIN_HOME")
 )
 _DEFAULT_PIPELINE_TEMPLATES_PATH = _os.path.normpath(
     _os.path.join(_os.path.dirname(__file__), 'templates'))
@@ -344,7 +344,7 @@ _PIPELINE_RESOURCE_TYPE_CONFIG_DICT = {
     },
     'train': {
         'chip': _default_model_chip,
-        'home': _PIPELINE_TRAINING_HOME,
+        'home': _PIPELINE_TRAIN_HOME,
         'namespace': _default_namespace,
         'subdir_name': _train_subdir_name,
         'image_registry_namespace': _default_image_registry_train_namespace,
@@ -787,7 +787,7 @@ def _get_resource_meta_data(
     output_host_path=None,
     ps_replicas=1,
     train_args=None,
-    training_runs_host_path=None,
+    train_host_path=None,
     worker_replicas=1,
     memory_limit=None
 ):
@@ -833,7 +833,7 @@ def _get_resource_meta_data(
     :param output_host_path:        (optional) train context
     :param ps_replicas:             (optional) train context
     :param train_args:              (optional) train context
-    :param training_runs_host_path: (optional) train context
+    :param train_host_path:         (optional) train context
     :param worker_replicas:         (optional) train context
     :param memory_limit:            (optional) train context
 
@@ -946,11 +946,11 @@ def _get_resource_meta_data(
         output_host_path = _os.path.normpath(output_host_path)
         output_host_path = _os.path.abspath(output_host_path)
 
-    if training_runs_host_path:
-        training_runs_host_path = _os.path.expandvars(training_runs_host_path)
-        training_runs_host_path = _os.path.expanduser(training_runs_host_path)
-        training_runs_host_path = _os.path.normpath(training_runs_host_path)
-        training_runs_host_path = _os.path.abspath(training_runs_host_path)
+    if train_host_path:
+        train_host_path = _os.path.expandvars(train_host_path)
+        train_host_path = _os.path.expanduser(train_host_path)
+        train_host_path = _os.path.normpath(train_host_path)
+        train_host_path = _os.path.abspath(train_host_path)
 
     if train_args:
         train_args = _os.path.expandvars(train_args)
@@ -1057,7 +1057,7 @@ def _get_resource_meta_data(
         'output_host_path': output_host_path,
         'ps_replicas': ps_replicas,
         'train_args': train_args,
-        'training_runs_host_path': training_runs_host_path,
+        'train_host_path': train_host_path,
         'worker_replicas': worker_replicas,
     }
     return resource_dict
@@ -1100,7 +1100,7 @@ def resource_optimize_and_train(
     output_host_path=None,
     ps_replicas=1,
     train_args=None,
-    training_runs_host_path=None,
+    train_host_path=None,
     worker_replicas=1,
     verify=False,
     cert=None,
@@ -1159,7 +1159,7 @@ def resource_optimize_and_train(
     :param str output_host_path:                    (Optional) train context
     :param int ps_replicas:                         (Optional) train context
     :param str train_args:                          (Optional) train context
-    :param str training_runs_host_path:             (Optional) train context
+    :param str train_host_path:                     (Optional) train context
     :param int worker_replicas:                     (Optional) train context
     :param bool verify:                             (optional) Either a boolean, in which case it
                                                         controls whether we verify the server's
@@ -1247,7 +1247,7 @@ def resource_optimize_and_train(
         'output_host_path': output_host_path,
         'ps_replicas': ps_replicas,
         'train_args': train_args,
-        'training_runs_host_path': training_runs_host_path,
+        'train_host_path': train_host_path,
         'worker_replicas': worker_replicas
     }
 
@@ -1320,7 +1320,7 @@ def resource_optimize_and_deploy(
     output_host_path=None,
     ps_replicas=1,
     train_args=None,
-    training_runs_host_path=None,
+    train_host_path=None,
     worker_replicas=1,
     resource_split_tag_and_weight_dict=None,
     resource_shadow_tag_list=None,
@@ -1385,7 +1385,7 @@ def resource_optimize_and_deploy(
     :param str output_host_path:                    (Optional) train context
     :param int ps_replicas:                         (Optional) train context
     :param str train_args:                          (Optional) train context
-    :param str training_runs_host_path:             (Optional) train context
+    :param str train_host_path:                     (Optional) train context
     :param int worker_replicas:                     (Optional) train context
     :param dict resource_split_tag_and_weight_dict: (Optional) routerules context
                                                         Example: dict(a:100, b:0, c:0)
@@ -1531,7 +1531,7 @@ def resource_optimize_and_deploy(
         'output_host_path': output_host_path,
         'ps_replicas': ps_replicas,
         'train_args': train_args,
-        'training_runs_host_path': training_runs_host_path,
+        'train_host_path': train_host_path,
         'worker_replicas': worker_replicas,
         'resource_split_tag_and_weight_dict': resource_split_tag_and_weight_dict,
         'resource_shadow_tag_list': resource_shadow_tag_list,
@@ -4699,7 +4699,7 @@ def train_server_start(model_name,
                        model_tag,
                        input_host_path,
                        output_host_path,
-                       training_runs_host_path,
+                       train_host_path,
                        train_args,
                        single_server_only='true',
                        stream_logger_url=None,
@@ -4732,12 +4732,12 @@ def train_server_start(model_name,
     output_host_path = _os.path.normpath(output_host_path)
     output_host_path = _os.path.abspath(output_host_path)
 
-    if _is_base64_encoded(training_runs_host_path):
-        training_runs_host_path = _decode_base64(training_runs_host_path)
-    training_runs_host_path = _os.path.expandvars(training_runs_host_path)
-    training_runs_host_path = _os.path.expanduser(training_runs_host_path)
-    training_runs_host_path = _os.path.normpath(training_runs_host_path)
-    training_runs_host_path = _os.path.abspath(training_runs_host_path)
+    if _is_base64_encoded(train_host_path):
+        train_host_path = _decode_base64(train_host_path)
+    train_host_path = _os.path.expandvars(train_host_path)
+    train_host_path = _os.path.expanduser(train_host_path)
+    train_host_path = _os.path.normpath(train_host_path)
+    train_host_path = _os.path.abspath(train_host_path)
 
     if _is_base64_encoded(train_args):
         train_args = _decode_base64(train_args)
@@ -4780,7 +4780,7 @@ def train_server_start(model_name,
     # Note:  The %s:<paths> below must match the paths in templates/docker/train-server-local-dockerfile.template
     # Any changes to these paths must be sync'd with train-server-local-dockerfile.template, train-cluster.yaml.template, and train-cluster-gpu.yaml.template
     # Also, /opt/ml/model is already burned into the Docker image at this point, so we can't specify it from the outside.  (This is by design.)
-    cmd = '%s run -itd -p 2222:2222 -p 6006:6006 -e PIPELINE_SINGLE_SERVER_ONLY=%s -e PIPELINE_STREAM_LOGGER_URL=%s -e PIPELINE_STREAM_LOGGER_TOPIC=%s -e PIPELINE_STREAM_INPUT_URL=%s -e PIPELINE_STREAM_INPUT_TOPIC=%s -e PIPELINE_STREAM_OUTPUT_URL=%s -e PIPELINE_STREAM_OUTPUT_TOPIC=%s -e TF_CONFIG=%s -e PIPELINE_TRAIN_ARGS="%s" -v %s:/opt/ml/input/ -v %s:/opt/ml/output/ -v %s:~/pipelineai/training_runs/ --name=%s %s %s %s/%s/%s-%s:%s train' % (start_cmd, single_server_only, stream_logger_url, stream_logger_topic, stream_input_url, stream_input_topic, stream_output_url, stream_output_topic, tf_config_local_run, train_args, input_host_path, output_host_path, training_runs_host_path, container_name, memory_limit, start_cmd_extra_args, image_registry_url, image_registry_repo, image_registry_namespace, model_name, model_tag)
+    cmd = '%s run -itd -p 2222:2222 -p 6006:6006 -e PIPELINE_SINGLE_SERVER_ONLY=%s -e PIPELINE_STREAM_LOGGER_URL=%s -e PIPELINE_STREAM_LOGGER_TOPIC=%s -e PIPELINE_STREAM_INPUT_URL=%s -e PIPELINE_STREAM_INPUT_TOPIC=%s -e PIPELINE_STREAM_OUTPUT_URL=%s -e PIPELINE_STREAM_OUTPUT_TOPIC=%s -e TF_CONFIG=%s -e PIPELINE_TRAIN_ARGS="%s" -v %s:/opt/ml/input/ -v %s:/opt/ml/output/ -v %s:~/pipelineai/models/ --name=%s %s %s %s/%s/%s-%s:%s train' % (start_cmd, single_server_only, stream_logger_url, stream_logger_topic, stream_input_url, stream_input_topic, stream_output_url, stream_output_topic, tf_config_local_run, train_args, input_host_path, output_host_path, train_host_path, container_name, memory_limit, start_cmd_extra_args, image_registry_url, image_registry_repo, image_registry_namespace, model_name, model_tag)
     print("")
     print(cmd)
     print("")
@@ -4817,7 +4817,7 @@ def _create_train_kube_yaml(model_name,
                             model_tag,
                             input_host_path,
                             output_host_path,
-                            training_runs_host_path,
+                            train_host_path,
                             model_chip,
                             train_args,
                             stream_logger_url,
@@ -4850,7 +4850,7 @@ def _create_train_kube_yaml(model_name,
                'PIPELINE_TRAIN_ARGS': train_args,
                'PIPELINE_INPUT_HOST_PATH': input_host_path,
                'PIPELINE_OUTPUT_HOST_PATH': output_host_path,
-               'PIPELINE_TRAINING_RUNS_HOST_PATH': training_runs_host_path,
+               'PIPELINE_TRAIN_HOST_PATH': train_host_path,
                'PIPELINE_STREAM_LOGGER_URL': stream_logger_url,
                'PIPELINE_STREAM_LOGGER_TOPIC': stream_logger_topic,
                'PIPELINE_STREAM_INPUT_URL': stream_input_url,
@@ -4955,7 +4955,7 @@ def train_kube_start(model_name,
                      model_tag,
                      input_host_path,
                      output_host_path,
-                     training_runs_host_path,
+                     train_host_path,
                      train_args,
                      model_chip=None,
                      master_replicas=1,
@@ -4997,12 +4997,12 @@ def train_kube_start(model_name,
     output_host_path = _os.path.normpath(output_host_path)
     output_host_path = _os.path.abspath(output_host_path)
 
-    if _is_base64_encoded(training_runs_host_path):
-        training_runs_host_path = _decode_base64(training_runs_host_path)
-    training_runs_host_path = _os.path.expandvars(training_runs_host_path)
-    training_runs_host_path = _os.path.expanduser(training_runs_host_path)
-    training_runs_host_path = _os.path.normpath(training_runs_host_path)
-    training_runs_host_path = _os.path.abspath(training_runs_host_path)
+    if _is_base64_encoded(train_host_path):
+        train_host_path = _decode_base64(train_host_path)
+    train_host_path = _os.path.expandvars(train_host_path)
+    train_host_path = _os.path.expanduser(train_host_path)
+    train_host_path = _os.path.normpath(train_host_path)
+    train_host_path = _os.path.abspath(train_host_path)
 
     if _is_base64_encoded(train_args):
         train_args = _decode_base64(train_args)
@@ -5042,7 +5042,7 @@ def train_kube_start(model_name,
                                                   model_chip=model_chip,
                                                   input_host_path=input_host_path,
                                                   output_host_path=output_host_path,
-                                                  training_runs_host_path=training_runs_host_path,
+                                                  train_host_path=train_host_path,
                                                   train_args=train_args,
                                                   stream_logger_url=stream_logger_url,
                                                   stream_logger_topic=stream_logger_topic,

@@ -133,7 +133,7 @@ spec:
             type: DirectoryOrCreate
         - name: pipeline-training-runs-home
           hostPath:
-            path: {{ PIPELINE_TRAINING_RUNS_HOST_PATH }}
+            path: {{ PIPELINE_TRAIN_HOST_PATH }}
             type: DirectoryOrCreate
         - name: cuda
           hostPath:

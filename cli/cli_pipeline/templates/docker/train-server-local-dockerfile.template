@@ -41,7 +41,7 @@ ENV \
 #  PIPELINE_OUTPUT_PATH=/opt/ml/output
 
 # We have tensorboard here because this Dockerfile can be used outside of a cluster
-# TODO: Sync this with PIPELINE_TRAINING_RUNS_HOME/_RELATIVE_PATH
+# TODO: Sync this with PIPELINE_TRAIN_HOME
 ENV \
   TENSORBOARD_LOGDIR_PATH=$PIPELINE_OUTPUT_PATH
 
