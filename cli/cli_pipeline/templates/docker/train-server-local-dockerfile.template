@@ -33,7 +33,7 @@ ENV \
 #  PIPELINE_RESOURCE_PATH=/opt/ml/model
 
 ENV \
-  PIPELINE_RESOURCE_PATH=/root
+  PIPELINE_INPUT_PATH=/root
 #  PIPELINE_INPUT_PATH=/opt/ml/input
 
 ENV \
