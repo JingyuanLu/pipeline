@@ -12,7 +12,7 @@ You will need to fill in the unique values for the following:
 * `<YOUR_TAG_NAME>` - User defined tag that uniquely identifies the model version
 * `<YOUR_RESOURCE_ID>` - Id that uniquely identifies the uploaded model, resource-id is generated and returned by the `resource-upload` command
 ```
-pipeline resource-optimize-and-train --host community.cloud.pipeline.ai --user-id <YOUR_USER_ID> --resource-type model --name <YOUR_MODEL_NAME> --tag <YOUR_TAG_NAME> --resource-subtype tensorflow --runtime-list [tfserving] --chip-list [cpu] --resource-id <YOUR_RESOURCE_ID>
+pipeline resource-optimize-and-train --host community.cloud.pipeline.ai --user-id <YOUR_USER_ID> --resource-type train --name <YOUR_MODEL_NAME> --tag <YOUR_TAG_NAME> --resource-subtype tensorflow --runtime-list [python] --chip-list [cpu] --resource-id <YOUR_RESOURCE_ID>
 ```
 
 ## CLI - resource_optimize_and_deploy
