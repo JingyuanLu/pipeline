@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-__version__ = "1.5.232"
+__version__ = "1.5.233"
 
 import base64 as _base64
 import glob as _glob
@@ -756,313 +756,6 @@ def _get_resource_subdir_path(
     return resource_path
 
 
-def _get_resource_meta_data(
-    user_id,
-    resource_type,
-    name,
-    tag,
-    resource_subtype,
-    runtime,
-    chip,
-    host,
-    resource_id=None,
-    build_type=None,
-    build_context_path=None,
-    namespace=None,
-    image_registry_url=None,
-    image_registry_repo=None,
-    image_registry_namespace=None,
-    image_registry_base_tag=None,
-    image_registry_base_chip=None,
-    pipeline_templates_path=None,
-    stream_logger_url=None,
-    stream_logger_topic=None,
-    stream_input_url=None,
-    stream_input_topic=None,
-    stream_output_url=None,
-    stream_output_topic=None,
-    # train
-    input_host_path=None,
-    master_replicas=1,
-    output_host_path=None,
-    ps_replicas=1,
-    train_args=None,
-    train_host_path=None,
-    worker_replicas=1,
-    memory_limit=None
-):
-    """
-    Get meta data including names and configuration by resource type.
-
-    IMPORTANT:
-        resource_id is optional to enable calling this method before the training resource has been created
-        resource_service_name and docker_image can only be determined when resource_id is supplied
-        resource_service_name and docker_image will be returned as None when resource_id is NOT supplied
-
-
-    :param user_id:                 OAuth identity provider Id that uniquely identifies the user
-    :param resource_type:           Type of resource (job, function, model, stream)
-    :param name:                    User defined name for the resource
-    :param tag:                     User defined tag for the resource
-    :param resource_subtype:        Framework type, tensorflow or pmml for models, kafka or mqtt for stream
-    :param runtime:                 Runtime that should be used to serve the resource
-                                        Valid values are
-                                            bash, caffe, cpp, jvm, nginx, nodejs,
-                                            onnx, python, tflite, tfserving
-    :param chip:                    Hardware chip that should be used to serve the resource
-                                        Valid values are cpu, gpu, tpu
-    :param host:                    PipelineAI host server dns name
-    :param resource_id:             (optional) Id that uniquely identifies the trained resource
-    :param build_type:              (optional)
-    :param build_context_path:      (optional)
-    :param namespace:               (optional)
-    :param image_registry_url:      (optional)
-    :param image_registry_repo:     (optional)
-    :param image_registry_namespace:(optional) Docker image name prefix
-    :param image_registry_base_tag: (optional)
-    :param image_registry_base_chip:(optional)
-    :param pipeline_templates_path: (optional)
-    :param stream_logger_url:       (optional)
-    :param stream_logger_topic:     (optional)
-    :param stream_input_url:        (optional)
-    :param stream_input_topic:      (optional)
-    :param stream_output_url:       (optional)
-    :param stream_output_topic:     (optional)
-    :param input_host_path:         (optional) train context
-    :param master_replicas:         (optional) train context
-    :param output_host_path:        (optional) train context
-    :param ps_replicas:             (optional) train context
-    :param train_args:              (optional) train context
-    :param train_host_path:         (optional) train context
-    :param worker_replicas:         (optional) train context
-    :param memory_limit:            (optional) train context
-
-    :return:                        dict containing meta data including names and configuration by resource type.
-    """
-    name = _validate_and_prep_name(name)
-    tag = _validate_and_prep_tag(tag)
-    resource_config = _get_resource_config(resource_type)
-    kube_resource_type_list = resource_config['kube_resource_type_list']
-
-    if not build_type:
-        build_type = _default_build_type
-    if not build_context_path:
-        build_context_path = _default_build_context_path
-    build_context_path = _os.path.expandvars(build_context_path)
-    build_context_path = _os.path.expanduser(build_context_path)
-    build_context_path = _os.path.abspath(build_context_path)
-    build_context_path = _os.path.normpath(build_context_path)
-
-    if not chip:
-        chip = _default_model_chip
-    if not image_registry_namespace:
-        image_registry_namespace = resource_config['image_registry_namespace']
-    if not image_registry_url:
-        image_registry_url = resource_config['image_registry_url']
-    if not image_registry_repo:
-        image_registry_repo = resource_config['image_registry_repo']
-    if not image_registry_base_tag:
-        image_registry_base_tag = resource_config['image_registry_base_tag']
-    if not image_registry_base_chip:
-        image_registry_base_chip = _default_model_chip
-    if not namespace:
-        namespace = resource_config['namespace']
-    if not memory_limit:
-        memory_limit = ''
-    else:
-        memory_limit = '--memory=%s --memory-swap=%s' % (memory_limit, memory_limit)
-
-    if not pipeline_templates_path:
-        pipeline_templates_path = _default_pipeline_templates_path
-    pipeline_templates_path = _os.path.expandvars(pipeline_templates_path)
-    pipeline_templates_path = _os.path.expanduser(pipeline_templates_path)
-    pipeline_templates_path = _os.path.abspath(pipeline_templates_path)
-    pipeline_templates_path = _os.path.normpath(pipeline_templates_path)
-    # All these paths must be in the same dir or this won't work
-    # be careful where you start the server or build from.
-    # If these paths are messed up, you will see a failure in predict/resource_server_build
-    #   at the first COPY command - usually something about
-    #   "not allowed to go outside of build context ../../"
-    pipeline_templates_path = _os.path.relpath(pipeline_templates_path, build_context_path)
-    pipeline_templates_path = _os.path.normpath(pipeline_templates_path)
-
-    short_user_id = _get_short_user_id_hash(user_id)
-    resource_name = _get_resource_name(user_id, name)
-    resource_tag = _get_resource_tag(
-        resource_type=resource_type,
-        tag=tag,
-        runtime=runtime,
-        chip=chip,
-        resource_id=resource_id
-    )
-
-    if resource_id:
-        resource_service_name = '%s-%s-%s' % (image_registry_namespace, resource_name, resource_tag)
-        docker_image = '%s/%s-%s:%s' % (
-            image_registry_repo,
-            image_registry_namespace,
-            resource_name,
-            resource_tag
-        )
-    else:
-        resource_service_name = None
-        docker_image = None
-
-    resource_type_home = resource_config['home']
-    resource_type_subdir_name = resource_config['subdir_name']
-    # TODO: move namespace (currently short_user_id) up in in front
-    #       of resource_subtype and resource_type
-    #       in the physical server path so permissions could be applied to `ONE DIRECTORY` that
-    #       cover all resource types and framework types for a given user
-    # IMPORTANT: do not include runtime or chip in the physical resource path because
-    #            all runtime and chip variants are produced from a single model
-    resource_path = _get_resource_path(
-        user_id=user_id,
-        resource_type=resource_type,
-        name=name,
-        tag=tag,
-        resource_subtype=resource_subtype
-    )
-
-    if not stream_logger_topic:
-        stream_logger_topic = '%s-%s-logger' % (resource_name, resource_tag)
-
-    if not stream_input_topic:
-        stream_input_topic = '%s-%s-input' % (resource_name, resource_tag)
-
-    if not stream_output_topic:
-        stream_output_topic = '%s-%s-output' % (resource_name, resource_tag)
-    # TODO: remaining stream_... defaults
-
-    if input_host_path:
-        input_host_path = _os.path.expandvars(input_host_path)
-        input_host_path = _os.path.expanduser(input_host_path)
-        input_host_path = _os.path.normpath(input_host_path)
-        input_host_path = _os.path.abspath(input_host_path)
-
-    if output_host_path:
-        output_host_path = _os.path.expandvars(output_host_path)
-        output_host_path = _os.path.expanduser(output_host_path)
-        output_host_path = _os.path.normpath(output_host_path)
-        output_host_path = _os.path.abspath(output_host_path)
-
-    if train_host_path:
-        train_host_path = _os.path.expandvars(train_host_path)
-        train_host_path = _os.path.expanduser(train_host_path)
-        train_host_path = _os.path.normpath(train_host_path)
-        train_host_path = _os.path.abspath(train_host_path)
-
-    if train_args:
-        train_args = _os.path.expandvars(train_args)
-        train_args = _os.path.expanduser(train_args)
-        train_args = _os.path.normpath(train_args)
-        train_args = _os.path.abspath(train_args)
-
-    # TODO: remove this temporary logic once predict/model/function have been collapsed into invoke
-    if resource_type == 'model':
-        template_registry_key = 'predict'
-    else:
-        template_registry_key = resource_type
-
-    # ********* Dockerfile ***********************************************************
-    resource_dockerfile_templates_path = _os.path.normpath(
-        _os.path.join(
-            pipeline_templates_path, _dockerfile_template_registry[template_registry_key][0][0]
-        )
-    )
-
-    # ********* deploy ***********************************************************
-    kube_deploy_yaml_templates_path = _os.path.normpath(
-        _os.path.join(
-            pipeline_templates_path,
-            _kube_deploy_template_registry[template_registry_key][0][0]
-        )
-    )
-
-    # ********* ingress ***********************************************************
-    kube_ingress_yaml_templates_path = _os.path.normpath(
-        _os.path.join(
-            pipeline_templates_path,
-            _kube_ingress_template_registry[template_registry_key][0][0]
-        )
-    )
-
-    # ********* svc ***********************************************************
-    kube_svc_yaml_templates_path = _os.path.normpath(
-        _os.path.join(
-            pipeline_templates_path,
-            _kube_svc_template_registry[template_registry_key][0][0]
-        )
-    )
-
-    # ********* routerules ***********************************************************
-    kube_routerules_yaml_templates_path = _os.path.normpath(
-        _os.path.join(
-            pipeline_templates_path,
-            _kube_routerules_template_registry[template_registry_key][0][0]
-        )
-    )
-
-    # ********* autoscale ***********************************************************
-    kube_autoscale_yaml_templates_path = _os.path.normpath(
-        _os.path.join(
-            pipeline_templates_path,
-            _kube_autoscale_template_registry[template_registry_key][0][0]
-        )
-    )
-
-    resource_dict = {
-        'host': host,
-        'user_id': user_id,
-        'short_user_id': short_user_id,
-        'name': name,
-        'tag': tag,
-        'resource_subtype': resource_subtype,
-        'runtime': runtime,
-        'chip': chip,
-        'build_type': build_type,
-        'build_context_path': build_context_path,
-        'docker_image': docker_image,
-        'image_registry_namespace': image_registry_namespace,
-        'image_registry_base_chip': image_registry_base_chip,
-        'image_registry_base_tag': image_registry_base_tag,
-        'image_registry_repo': image_registry_repo,
-        'image_registry_url': image_registry_url,
-        'kube_resource_type_list': kube_resource_type_list,
-        'kube_deploy_yaml_templates_path': kube_deploy_yaml_templates_path,
-        'kube_ingress_yaml_templates_path': kube_ingress_yaml_templates_path,
-        'kube_svc_yaml_templates_path': kube_svc_yaml_templates_path,
-        'kube_autoscale_yaml_templates_path': kube_autoscale_yaml_templates_path,
-        'kube_routerules_yaml_templates_path': kube_routerules_yaml_templates_path,
-        'memory_limit': memory_limit,
-        'pipeline_templates_path': pipeline_templates_path,
-        'namespace': namespace,
-        'resource_id': resource_id,
-        'resource_dockerfile_templates_path': resource_dockerfile_templates_path,
-        'resource_type': resource_type,
-        'resource_type_home': resource_type_home,
-        'resource_type_subdir_name': resource_type_subdir_name,
-        'resource_name': resource_name,
-        'resource_tag': resource_tag,
-        'resource_path': resource_path,
-        'resource_service_name': resource_service_name,
-        'stream_logger_url': stream_logger_url,
-        'stream_logger_topic': stream_logger_topic,
-        'stream_input_url': stream_input_url,
-        'stream_input_topic': stream_input_topic,
-        'stream_output_url': stream_output_url,
-        'stream_output_topic': stream_output_topic,
-        'input_host_path': input_host_path,
-        'master_replicas': master_replicas,
-        'output_host_path': output_host_path,
-        'ps_replicas': ps_replicas,
-        'train_args': train_args,
-        'train_host_path': train_host_path,
-        'worker_replicas': worker_replicas,
-    }
-    return resource_dict
-
-
 def resource_optimize_and_train(
     host,
     user_id,
@@ -1074,9 +767,9 @@ def resource_optimize_and_train(
     chip_list,
     resource_id,
     kube_resource_type_list=None,
+    namespace=None,
     build_type=None,
     build_context_path=None,
-    namespace=None,
     squash=False,
     no_cache=False,
     http_proxy=None,
@@ -1096,12 +789,21 @@ def resource_optimize_and_train(
     stream_enable_mqtt=False,
     stream_enable_kafka_rest_api=False,
     input_host_path=None,
-    master_replicas=1,
     output_host_path=None,
-    ps_replicas=1,
-    train_args=None,
-    train_host_path=None,
+    master_replicas=1,
     worker_replicas=1,
+    ps_replicas=1,
+    master_memory='4Gi',
+    worker_memory='4Gi',
+    ps_memory='4Gi',
+    master_cpu='500m',
+    worker_cpu='500m',
+    ps_cpu='500m',
+    master_gpu='0',
+    worker_gpu='0',
+    ps_gpu='0',
+    train_args='',
+#    train_host_path=None,
     verify=False,
     cert=None,
     timeout=None
@@ -1159,7 +861,6 @@ def resource_optimize_and_train(
     :param str output_host_path:                    (Optional) train context
     :param int ps_replicas:                         (Optional) train context
     :param str train_args:                          (Optional) train context
-    :param str train_host_path:                     (Optional) train context
     :param int worker_replicas:                     (Optional) train context
     :param bool verify:                             (optional) Either a boolean, in which case it
                                                         controls whether we verify the server's
@@ -1221,9 +922,9 @@ def resource_optimize_and_train(
         'chip_list': chip_list,
         'resource_id': resource_id,
         'kube_resource_type_list': kube_resource_type_list,
+        'namespace': namespace,
         'build_type': build_type,
         'build_context_path': build_context_path,
-        'namespace': namespace,
         'squash': squash,
         'no_cache': no_cache,
         'http_proxy': http_proxy,
@@ -1247,7 +948,7 @@ def resource_optimize_and_train(
         'output_host_path': output_host_path,
         'ps_replicas': ps_replicas,
         'train_args': train_args,
-        'train_host_path': train_host_path,
+#        'train_host_path': train_host_path,
         'worker_replicas': worker_replicas
     }
 
@@ -1291,12 +992,9 @@ def resource_optimize_and_deploy(
     chip_list,
     resource_id,
     kube_resource_type_list=None,
+    namespace=None,
     build_type=None,
     build_context_path=None,
-    namespace=None,
-    target_core_util_percentage='50',
-    min_replicas='1',
-    max_replicas='2',
     squash=False,
     no_cache=False,
     http_proxy=None,
@@ -1315,13 +1013,19 @@ def resource_optimize_and_deploy(
     stream_output_topic=None,
     stream_enable_mqtt=False,
     stream_enable_kafka_rest_api=False,
-    input_host_path=None,
-    master_replicas=1,
-    output_host_path=None,
-    ps_replicas=1,
-    train_args=None,
-    train_host_path=None,
-    worker_replicas=1,
+#    input_host_path=None,
+#    master_replicas=1,
+#    output_host_path=None,
+#    ps_replicas=1,
+#    train_args=None,
+#    train_host_path=None,
+#    worker_replicas=1,
+#    target_core_util_percentage='50',
+#    min_replicas='1',
+#    max_replicas='2',
+    predict_memory_limit='3Gi',
+    predict_cpu_limit='500m',
+    predict_gpu_limit='0',
     resource_split_tag_and_weight_dict=None,
     resource_shadow_tag_list=None,
     new_route=True,
@@ -1502,12 +1206,12 @@ def resource_optimize_and_deploy(
         'chip_list': chip_list,
         'resource_id': resource_id,
         'kube_resource_type_list': kube_resource_type_list,
+        'namespace': namespace,
+#        'target_core_util_percentage': target_core_util_percentage,
+#        'min_replicas': min_replicas,
+#        'max_replicas': max_replicas,
         'build_type': build_type,
         'build_context_path': build_context_path,
-        'namespace': namespace,
-        'target_core_util_percentage': target_core_util_percentage,
-        'min_replicas': min_replicas,
-        'max_replicas': max_replicas,
         'squash': squash,
         'no_cache': no_cache,
         'http_proxy': http_proxy,
@@ -1526,13 +1230,13 @@ def resource_optimize_and_deploy(
         'stream_output_topic': stream_output_topic,
         'stream_enable_mqtt': stream_enable_mqtt,
         'stream_enable_kafka_rest_api': stream_enable_kafka_rest_api,
-        'input_host_path': input_host_path,
-        'master_replicas': master_replicas,
-        'output_host_path': output_host_path,
-        'ps_replicas': ps_replicas,
-        'train_args': train_args,
-        'train_host_path': train_host_path,
-        'worker_replicas': worker_replicas,
+#        'input_host_path': input_host_path,
+#        'master_replicas': master_replicas,
+#        'output_host_path': output_host_path,
+#        'ps_replicas': ps_replicas,
+#        'train_args': train_args,
+#        'train_host_path': train_host_path,
+#        'worker_replicas': worker_replicas,
         'resource_split_tag_and_weight_dict': resource_split_tag_and_weight_dict,
         'resource_shadow_tag_list': resource_shadow_tag_list,
         'new_route': new_route,
@@ -2616,9 +2320,9 @@ def _create_predict_kube_Kubernetes_yaml(model_name,
                                          stream_input_topic=None,
                                          stream_output_url=None,
                                          stream_output_topic=None,
-                                         target_core_util_percentage='50',
-                                         min_replicas='1',
-                                         max_replicas='2',
+#                                         target_core_util_percentage='50',
+#                                         min_replicas='1',
+#                                         max_replicas='2',
                                          image_registry_url=None,
                                          image_registry_repo=None,
                                          image_registry_namespace=None,
@@ -2670,9 +2374,9 @@ def _create_predict_kube_Kubernetes_yaml(model_name,
                'PIPELINE_STREAM_INPUT_TOPIC': stream_input_topic,
                'PIPELINE_STREAM_OUTPUT_URL': stream_output_url,
                'PIPELINE_STREAM_OUTPUT_TOPIC': stream_output_topic,
-               'PIPELINE_TARGET_CORE_UTIL_PERCENTAGE': target_core_util_percentage,
-               'PIPELINE_MIN_REPLICAS': min_replicas,
-               'PIPELINE_MAX_REPLICAS': max_replicas,
+#               'PIPELINE_TARGET_CORE_UTIL_PERCENTAGE': target_core_util_percentage,
+#               'PIPELINE_MIN_REPLICAS': min_replicas,
+#               'PIPELINE_MAX_REPLICAS': max_replicas,
                'PIPELINE_IMAGE_REGISTRY_URL': image_registry_url,
                'PIPELINE_IMAGE_REGISTRY_REPO': image_registry_repo,
                'PIPELINE_IMAGE_REGISTRY_NAMESPACE': image_registry_namespace,
@@ -2833,7 +2537,7 @@ def predict_server_start(model_name,
                          predict_port='8080',
                          prometheus_port='9090',
                          grafana_port='3000',
-                         memory_limit=None,
+                         predict_memory_limit=None,
                          start_cmd='docker',
                          start_cmd_extra_args=''):
 
@@ -2865,14 +2569,14 @@ def predict_server_start(model_name,
     #
     # https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory
     #
-    if not memory_limit:
-        memory_limit = ''
+    if not predict_memory_limit:
+        predict_memory_limit = ''
     else:
-        memory_limit = '--memory=%s --memory-swap=%s' % (memory_limit, memory_limit)
+        predict_memory_limit = '--memory=%s --memory-swap=%s' % (predict_memory_limit, predict_memory_limit)
 
     # Note: We added `serve` to mimic AWS SageMaker and encourage ENTRYPOINT vs CMD as detailed here:
     #       https://docs.aws.amazon.com/sagemaker/latest/dg/your-algorithms-inference-code.html
-    cmd = '%s run -itd -p %s:8080 -p %s:9090 -p %s:3000 -e PIPELINE_SINGLE_SERVER_ONLY=%s -e PIPELINE_ENABLE_STREAM_PREDICTIONS=%s -e PIPELINE_STREAM_LOGGER_URL=%s -e PIPELINE_STREAM_LOGGER_TOPIC=%s -e PIPELINE_STREAM_INPUT_URL=%s -e PIPELINE_STREAM_INPUT_TOPIC=%s -e PIPELINE_STREAM_OUTPUT_URL=%s -e PIPELINE_STREAM_OUTPUT_TOPIC=%s --name=%s %s %s %s/%s/%s-%s:%s serve' % (start_cmd, predict_port, prometheus_port, grafana_port, single_server_only, enable_stream_predictions, stream_logger_url, stream_logger_topic, stream_input_url, stream_input_topic, stream_output_url, stream_output_topic, container_name, memory_limit, start_cmd_extra_args, image_registry_url, image_registry_repo, image_registry_namespace, model_name, model_tag)
+    cmd = '%s run -itd -p %s:8080 -p %s:9090 -p %s:3000 -e PIPELINE_SINGLE_SERVER_ONLY=%s -e PIPELINE_ENABLE_STREAM_PREDICTIONS=%s -e PIPELINE_STREAM_LOGGER_URL=%s -e PIPELINE_STREAM_LOGGER_TOPIC=%s -e PIPELINE_STREAM_INPUT_URL=%s -e PIPELINE_STREAM_INPUT_TOPIC=%s -e PIPELINE_STREAM_OUTPUT_URL=%s -e PIPELINE_STREAM_OUTPUT_TOPIC=%s --name=%s %s %s %s/%s/%s-%s:%s serve' % (start_cmd, predict_port, prometheus_port, grafana_port, single_server_only, enable_stream_predictions, stream_logger_url, stream_logger_topic, stream_input_url, stream_input_topic, stream_output_url, stream_output_topic, container_name, predict_memory_limit, start_cmd_extra_args, image_registry_url, image_registry_repo, image_registry_namespace, model_name, model_tag)
     print("")
     print(cmd)
     print("")
@@ -3068,9 +2772,9 @@ def predict_kube_start(model_name,
                        stream_input_topic=None,
                        stream_output_url=None,
                        stream_output_topic=None,
-                       target_core_util_percentage='50',
-                       min_replicas='1',
-                       max_replicas='2',
+#                       target_core_util_percentage='50',
+#                       min_replicas='1',
+#                       max_replicas='2',
                        image_registry_url=None,
                        image_registry_repo=None,
                        image_registry_namespace=None,
@@ -3116,9 +2820,9 @@ def predict_kube_start(model_name,
                                       stream_input_topic=stream_input_topic,
                                       stream_output_url=stream_output_url,
                                       stream_output_topic=stream_output_topic,
-                                      target_core_util_percentage=target_core_util_percentage,
-                                      min_replicas=min_replicas,
-                                      max_replicas=max_replicas,
+#                                      target_core_util_percentage=target_core_util_percentage,
+#                                      min_replicas=min_replicas,
+#                                      max_replicas=max_replicas,
                                       image_registry_url=image_registry_url,
                                       image_registry_repo=image_registry_repo,
                                       image_registry_namespace=image_registry_namespace,
@@ -4699,7 +4403,7 @@ def train_server_start(model_name,
                        model_tag,
                        input_host_path,
                        output_host_path,
-                       train_host_path,
+#                       train_host_path,
                        train_args,
                        single_server_only='true',
                        stream_logger_url=None,
@@ -4708,7 +4412,7 @@ def train_server_start(model_name,
                        stream_input_topic=None,
                        stream_output_url=None,
                        stream_output_topic=None,
-                       memory_limit=None,
+                       train_memory_limit=None,
                        image_registry_url=None,
                        image_registry_repo=None,
                        image_registry_namespace=None,
@@ -4732,12 +4436,12 @@ def train_server_start(model_name,
     output_host_path = _os.path.normpath(output_host_path)
     output_host_path = _os.path.abspath(output_host_path)
 
-    if _is_base64_encoded(train_host_path):
-        train_host_path = _decode_base64(train_host_path)
-    train_host_path = _os.path.expandvars(train_host_path)
-    train_host_path = _os.path.expanduser(train_host_path)
-    train_host_path = _os.path.normpath(train_host_path)
-    train_host_path = _os.path.abspath(train_host_path)
+#    if _is_base64_encoded(train_host_path):
+#        train_host_path = _decode_base64(train_host_path)
+#    train_host_path = _os.path.expandvars(train_host_path)
+#    train_host_path = _os.path.expanduser(train_host_path)
+#    train_host_path = _os.path.normpath(train_host_path)
+#    train_host_path = _os.path.abspath(train_host_path)
 
     if _is_base64_encoded(train_args):
         train_args = _decode_base64(train_args)
@@ -4764,10 +4468,10 @@ def train_server_start(model_name,
     #
     # https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory
     #
-    if not memory_limit:
-        memory_limit = ''
+    if not train_memory_limit:
+        train_memory_limit = ''
     else:
-        memory_limit = '--memory=%s --memory-swap=%s' % (memory_limit, memory_limit)
+        train_memory_limit = '--memory=%s --memory-swap=%s' % (train_memory_limit, train_memory_limit)
 
     # environment == local, task type == worker, and no cluster definition
     tf_config_local_run = '\'{\"environment\": \"local\", \"task\":{\"type\": \"worker\"}}\''
@@ -4780,7 +4484,7 @@ def train_server_start(model_name,
     # Note:  The %s:<paths> below must match the paths in templates/docker/train-server-local-dockerfile.template
     # Any changes to these paths must be sync'd with train-server-local-dockerfile.template, train-cluster.yaml.template, and train-cluster-gpu.yaml.template
     # Also, /opt/ml/model is already burned into the Docker image at this point, so we can't specify it from the outside.  (This is by design.)
-    cmd = '%s run -itd -p 2222:2222 -p 6006:6006 -e PIPELINE_SINGLE_SERVER_ONLY=%s -e PIPELINE_STREAM_LOGGER_URL=%s -e PIPELINE_STREAM_LOGGER_TOPIC=%s -e PIPELINE_STREAM_INPUT_URL=%s -e PIPELINE_STREAM_INPUT_TOPIC=%s -e PIPELINE_STREAM_OUTPUT_URL=%s -e PIPELINE_STREAM_OUTPUT_TOPIC=%s -e TF_CONFIG=%s -e PIPELINE_TRAIN_ARGS="%s" -v %s:/opt/ml/input/ -v %s:/opt/ml/output/ -v %s:/opt/ml/model/ --name=%s %s %s %s/%s/%s-%s:%s train' % (start_cmd, single_server_only, stream_logger_url, stream_logger_topic, stream_input_url, stream_input_topic, stream_output_url, stream_output_topic, tf_config_local_run, train_args, input_host_path, output_host_path, train_host_path, container_name, memory_limit, start_cmd_extra_args, image_registry_url, image_registry_repo, image_registry_namespace, model_name, model_tag)
+    cmd = '%s run -itd -p 2222:2222 -p 6006:6006 -e PIPELINE_SINGLE_SERVER_ONLY=%s -e PIPELINE_STREAM_LOGGER_URL=%s -e PIPELINE_STREAM_LOGGER_TOPIC=%s -e PIPELINE_STREAM_INPUT_URL=%s -e PIPELINE_STREAM_INPUT_TOPIC=%s -e PIPELINE_STREAM_OUTPUT_URL=%s -e PIPELINE_STREAM_OUTPUT_TOPIC=%s -e TF_CONFIG=%s -e PIPELINE_TRAIN_ARGS="%s" -v %s:/opt/ml/input/ -v %s:/opt/ml/output/ --name=%s %s %s %s/%s/%s-%s:%s train' % (start_cmd, single_server_only, stream_logger_url, stream_logger_topic, stream_input_url, stream_input_topic, stream_output_url, stream_output_topic, tf_config_local_run, train_args, input_host_path, output_host_path, container_name, train_memory_limit, start_cmd_extra_args, image_registry_url, image_registry_repo, image_registry_namespace, model_name, model_tag)
     print("")
     print(cmd)
     print("")
@@ -4817,7 +4521,7 @@ def _create_train_kube_yaml(model_name,
                             model_tag,
                             input_host_path,
                             output_host_path,
-                            train_host_path,
+ #                           train_host_path,
                             model_chip,
                             train_args,
                             stream_logger_url,
@@ -4850,7 +4554,7 @@ def _create_train_kube_yaml(model_name,
                'PIPELINE_TRAIN_ARGS': train_args,
                'PIPELINE_INPUT_HOST_PATH': input_host_path,
                'PIPELINE_OUTPUT_HOST_PATH': output_host_path,
-               'PIPELINE_TRAIN_HOST_PATH': train_host_path,
+#               'PIPELINE_TRAIN_HOST_PATH': train_host_path,
                'PIPELINE_STREAM_LOGGER_URL': stream_logger_url,
                'PIPELINE_STREAM_LOGGER_TOPIC': stream_logger_topic,
                'PIPELINE_STREAM_INPUT_URL': stream_input_url,
@@ -4955,7 +4659,7 @@ def train_kube_start(model_name,
                      model_tag,
                      input_host_path,
                      output_host_path,
-                     train_host_path,
+#                     train_host_path,
                      train_args,
                      model_chip=None,
                      master_replicas=1,
@@ -4997,12 +4701,12 @@ def train_kube_start(model_name,
     output_host_path = _os.path.normpath(output_host_path)
     output_host_path = _os.path.abspath(output_host_path)
 
-    if _is_base64_encoded(train_host_path):
-        train_host_path = _decode_base64(train_host_path)
-    train_host_path = _os.path.expandvars(train_host_path)
-    train_host_path = _os.path.expanduser(train_host_path)
-    train_host_path = _os.path.normpath(train_host_path)
-    train_host_path = _os.path.abspath(train_host_path)
+#    if _is_base64_encoded(train_host_path):
+#        train_host_path = _decode_base64(train_host_path)
+#    train_host_path = _os.path.expandvars(train_host_path)
+#    train_host_path = _os.path.expanduser(train_host_path)
+#    train_host_path = _os.path.normpath(train_host_path)
+#    train_host_path = _os.path.abspath(train_host_path)
 
     if _is_base64_encoded(train_args):
         train_args = _decode_base64(train_args)
@@ -5042,7 +4746,7 @@ def train_kube_start(model_name,
                                                   model_chip=model_chip,
                                                   input_host_path=input_host_path,
                                                   output_host_path=output_host_path,
-                                                  train_host_path=train_host_path,
+#                                                  train_host_path=train_host_path,
                                                   train_args=train_args,
                                                   stream_logger_url=stream_logger_url,
                                                   stream_logger_topic=stream_logger_topic,

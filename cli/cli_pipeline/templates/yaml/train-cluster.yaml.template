@@ -122,10 +122,10 @@ spec:
           hostPath:
             path: {{ PIPELINE_OUTPUT_HOST_PATH }}
             type: DirectoryOrCreate
-        - name: pipeline-training-runs-home
-          hostPath:
-            path: {{ PIPELINE_TRAIN_HOST_PATH }}
-            type: DirectoryOrCreate
+#        - name: pipeline-training-runs-home
+#          hostPath:
+#            path: {{ PIPELINE_TRAIN_HOST_PATH }}
+#            type: DirectoryOrCreate
 ---
 {% endfor %}
 {%- endfor -%}
