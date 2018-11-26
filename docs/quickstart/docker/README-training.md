@@ -63,7 +63,7 @@ Notes:
 
 ## Start Training Server
 ```
-pipeline train-server-start --memory-limit=2G --model-name=mnist --model-tag=v1tensorflow --input-host-path=./tensorflow/mnist-v1/model/ --output-host-path=./tensorflow/mnist-v1/model/ --train-host-path=./tensorflow/mnist-v1/model/ --train-args="--train_epochs=2 --batch_size=100 --model_dir=. --data_dir=. --export_dir=./pipeline_tfserving/"
+pipeline train-server-start --train-memory-limit=2G --model-name=mnist --model-tag=v1tensorflow --input-host-path=./tensorflow/mnist-v1/model/ --output-host-path=./tensorflow/mnist-v1/model/ --train-host-path=./tensorflow/mnist-v1/model/ --train-args="--train_epochs=2 --batch_size=100 --model_dir=. --data_dir=. --export_dir=./pipeline_tfserving/"
 ```
 Notes: 
 * You may need to clear the `--model_dir` before you start, otherwise the training job may not start

@@ -95,7 +95,7 @@ Notes:
 
 ## Start the Model Server
 ```
-pipeline predict-server-start --model-name=mnist --model-tag=v1tensorflow --memory-limit=2G
+pipeline predict-server-start --model-name=mnist --model-tag=v1tensorflow --predict-memory-limit=2G
 ```
 Notes:
 * Ignore `WARNING: Your kernel does not support swap limit capabilities or the cgroup is not mounted. Memory limited without swap.`
