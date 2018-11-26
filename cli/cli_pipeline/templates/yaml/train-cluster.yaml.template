@@ -111,8 +111,8 @@ spec:
           mountPath: /opt/ml/input
         - name: output
           mountPath: /opt/ml/output
-        - name: pipeline-training-runs-home
-          mountPath: /root/pipelineai/training_runs
+        - name: model 
+          mountPath: /opt/ml/model
       volumes:
         - name: input
           hostPath:
@@ -122,10 +122,10 @@ spec:
           hostPath:
             path: {{ PIPELINE_OUTPUT_HOST_PATH }}
             type: DirectoryOrCreate
-#        - name: pipeline-training-runs-home
-#          hostPath:
-#            path: {{ PIPELINE_TRAIN_HOST_PATH }}
-#            type: DirectoryOrCreate
+        - name: model
+          hostPath:
+            path: {{ PIPELINE_RESOURCE_PATH }}
+            type: DirectoryOrCreate
 ---
 {% endfor %}
 {%- endfor -%}
